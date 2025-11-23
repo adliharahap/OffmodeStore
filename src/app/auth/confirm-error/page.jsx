@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XCircle, Mail, Send } from 'lucide-react';
-import { createClient } from '../../../../lib/supabaseClient';
 import HeaderUniversal from '../../../../components/Header';
+import { supabase } from '../../../../lib/supabaseClient';
 
 export default function ConfirmErrorPage() {
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
