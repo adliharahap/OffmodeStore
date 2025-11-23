@@ -1,484 +1,317 @@
 "use client";
 
-import React, { useState } from 'react';
-// DI-UPDATE: Impor AnimatePresence dan ikon User
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// DI-UPDATE: Impor ikon yang diperlukan
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User } from 'lucide-react';
-import HeaderUniversal from '../../../components/HeaderUniversal';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, Sparkles, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import HeaderUniversal from '../../../components/Header';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
-
+import Footer from '../../../components/Footer';
 
 // --- VARIAN ANIMASI ---
-const formContainerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { 
     opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: 'easeOut',
-      staggerChildren: 0.1
-    }
+    transition: { duration: 0.6, ease: "easeOut", staggerChildren: 0.1 }
   },
   exit: {
     opacity: 0,
-    y: -20,
-    transition: {
-      duration: 0.3,
-      ease: 'easeIn'
-    }
+    transition: { duration: 0.4 }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 }
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }
 };
 
-// --- KOMPONEN UTAMA HALAMAN LOGIN & REGISTER ---
-const LoginPage = () => {
-  // --- STATE BARU ---
-  const [isLoginView, setIsLoginView] = useState(true); // true = Login, false = Register
+// --- KOMPONEN INPUT FIELD ---
+const InputField = ({ icon: Icon, isPassword, showPass, togglePass, error, ...props }) => (
+  <div className="space-y-1.5">
+    <div className="group relative">
+      <div className="absolute top-3.5 left-4 text-gray-400 group-focus-within:text-purple-600 dark:text-gray-500 dark:group-focus-within:text-purple-400 transition-colors">
+        <Icon size={20} />
+      </div>
+      <input
+        {...props}
+        type={isPassword ? (showPass ? 'text' : 'password') : props.type}
+        className={`w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-white/5 border rounded-xl text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 dark:border-white/10'}`}
+      />
+      {isPassword && (
+        <button
+          type="button"
+          onClick={togglePass}
+          className="absolute top-3.5 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      )}
+    </div>
+    {error && (
+      <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="text-xs text-red-500 font-medium ml-1">
+        {error}
+      </motion.p>
+    )}
+  </div>
+);
 
-  // State untuk kedua form
+const LoginPage = () => {
+  const router = useRouter();
+  const [isLoginView, setIsLoginView] = useState(true);
+
+  // State Form
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // Baru
-
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Baru
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  // DI-UPDATE: State untuk pesan sukses atau error global
   const [successMessage, setSuccessMessage] = useState('');
 
-  // URL Gambar
-  const loginImage = "https://placehold.co/800x1200/5E548E/FFFFFF?text=Welcome+Style";
-  const registerImage = "https://placehold.co/800x1200/9F86C0/FFFFFF?text=Join+Us";
+  // Gambar Editorial (Gunakan gambar high-res fashion)
+  const loginImage = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1200&auto=format&fit=crop"; // Potret Wanita Elegan
+  const registerImage = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop"; // Potret Pria Elegan (atau style berbeda)
 
-  // --- FUNGSI VALIDASI (DI-UPDATE) ---
+  // --- VALIDASI ---
   const validate = () => {
     const newErrors = {};
-    setErrors({}); // Reset error setiap validasi
+    setErrors({});
     setSuccessMessage('');
 
-    // Validasi untuk Register
+    if (!email) newErrors.email = 'Email wajib diisi';
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Format email tidak valid';
+
+    if (!password) newErrors.password = 'Password wajib diisi';
+    else if (password.length < 8) newErrors.password = 'Minimal 8 karakter';
+
     if (!isLoginView) {
-      if (!name.trim()) {
-        newErrors.name = 'Nama lengkap tidak boleh kosong';
-      }
-    }
-
-    // Validasi Email (Sama untuk keduanya)
-    if (!email) {
-      newErrors.email = 'Email tidak boleh kosong';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Format email tidak valid';
-    }
-
-    // Validasi Password (Sama untuk keduanya)
-    if (!password) {
-      newErrors.password = 'Password tidak boleh kosong';
-    } else if (password.length < 8) {
-      newErrors.password = 'Password minimal 8 karakter';
-    }
-
-    // DI-UPDATE: Validasi kompleksitas password HANYA untuk register
-    if (!isLoginView) {
-      // Regex: min 8 karakter, 1 huruf besar, 1 huruf kecil, 1 angka, 1 simbol
+      if (!name.trim()) newErrors.name = 'Nama lengkap wajib diisi';
+      
+      if (!phone) newErrors.phone = 'No. HP wajib diisi';
+      else if (!/^08[0-9]{8,12}$/.test(phone)) newErrors.phone = 'Format HP harus 08...';
+      
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+      if (!passwordRegex.test(password)) newErrors.password = 'Harus ada Huruf Besar, Kecil, Angka & Simbol';
 
-      if (!passwordRegex.test(password)) {
-        newErrors.password = 'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol (@$!%*?&#)';
-      }
-
-      // Validasi Konfirmasi Password (Hanya Register)
-      if (!confirmPassword) {
-        newErrors.confirmPassword = 'Konfirmasi password tidak boleh kosong';
-      } else if (password !== confirmPassword) {
-        newErrors.confirmPassword = 'Password tidak cocok';
-      }
+      if (!confirmPassword) newErrors.confirmPassword = 'Konfirmasi password wajib';
+      else if (password !== confirmPassword) newErrors.confirmPassword = 'Password tidak cocok';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // --- FUNGSI SUBMIT (DI-UPDATE) ---
+  // --- SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) {
-      return; // Hentikan jika validasi gagal
-    }
+    if (!validate()) return;
 
     setIsLoading(true);
     setErrors({});
 
     try {
       if (isLoginView) {
-        // --- Logika Submit Login ---
-        console.log('Login data:', { email, password });
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          setErrors({ general: 'Email atau password salah.' }); // Pesan error generik
-          console.error('Supabase Login Error:', error.message);
+          setErrors({ general: 'Email atau password salah.' });
         } else {
-          setSuccessMessage('Login berhasil! Anda akan diarahkan...');
-          console.log('Login Sukses:', data);
-          // Di aplikasi nyata, Anda akan redirect di sini, misal:
-          // window.location.href = '/dashboard';
-          // Untuk simulasi:
-          setTimeout(() => {
-            // DI-UPDATE: Mengganti alert() dengan console.log()
-            console.log('Login Berhasil! (Simulasi Redirect)');
-          }, 1500);
+          setSuccessMessage('Login berhasil! Mengalihkan...');
+          setTimeout(() => window.location.href = '/', 1500);
         }
       } else {
-        // --- Logika Submit Register (SUPABASE) ---
-        console.log('Register data:', { name, email, password });
-
-        const { data, error } = await supabase.auth.signUp({
-          email: email,
-          password: password,
+        const { error } = await supabase.auth.signUp({
+          email, password, phone,
           options: {
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
-            data: {
-              full_name: name, // Menyimpan nama ke metadata user
-            }
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+            data: { full_name: name, phone, email }
           }
         });
-
         if (error) {
-          setErrors({ general: error.message }); // Tampilkan error dari Supabase
-          console.error('Supabase Sign Up Error:', error.message);
+          setErrors({ general: error.message });
         } else {
-          setSuccessMessage('Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.');
-          console.log('Sign Up Sukses:', data);
-          // Biarkan user di halaman ini untuk melihat pesan sukses.
-          // Jangan langsung toggleView
+          setSuccessMessage('Registrasi berhasil! Cek email untuk verifikasi.');
         }
       }
     } catch (error) {
-      setErrors({ general: 'Terjadi kesalahan tidak terduga. Silakan coba lagi.' });
-      console.error('Submit Error:', error);
+      setErrors({ general: 'Terjadi kesalahan sistem.' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- FUNGSI BARU: TOGGLE VIEW ---
   const toggleView = () => {
     setIsLoginView(!isLoginView);
-    // Reset semua state form
-    setName('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setErrors({});
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setIsLoading(false);
-    setSuccessMessage(''); // DI-UPDATE: Reset pesan sukses
+    setName(''); setEmail(''); setPhone(''); setPassword(''); setConfirmPassword('');
+    setErrors({}); setSuccessMessage('');
   };
 
-    const FormMessages = () => (
-    <AnimatePresence>
-      {errors.general && (
-        <motion.div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-        >
-          {errors.general}
-        </motion.div>
-      )}
-      {successMessage && (
-        <motion.div
-          className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-        >
-          {successMessage}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
   return (
-    <>
+    <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white font-sans transition-colors duration-500 flex flex-col">
       <HeaderUniversal />
-      <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-gray-900 py-20 px-4 sm:px-6 lg:px-8">
-        <motion.div
-          layout // Animasikan perubahan layout
-          className={`relative flex flex-col w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden
-                      ${isLoginView ? 'md:flex-row' : 'md:flex-row-reverse'} 
-                     `} // DI-UPDATE: Toggle flex-direction
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+
+      {/* Background Noise */}
+      <div className=" inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 fixed mix-blend-multiply dark:mix-blend-normal" 
+           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>
+      </div>
+
+      <div className="mt-16 mb-30 flex-1 flex items-center justify-center p-4 md:p-8 z-10 pt-24">
+        <motion.div 
+          layout
+          className="bg-white dark:bg-[#111] w-full max-w-5xl rounded-3xl shadow-2xl shadow-gray-200/50 dark:shadow-none border border-gray-200 dark:border-white/10 overflow-hidden flex flex-col md:flex-row min-h-[600px] md:min-h-[700px]"
         >
-          {/* --- KOLOM GAMBAR (KIRI ATAU KANAN) --- */}
-          <div className="w-full md:w-1/2 h-64 md:h-auto overflow-hidden relative">
-            {/* Menggunakan AnimatePresence untuk transisi gambar */}
-            <AnimatePresence>
-              <motion.img
-                key={isLoginView ? 'login' : 'register'} // Key untuk memicu transisi
-                src={isLoginView ? loginImage : registerImage}
-                alt="Visual"
-                className="w-full h-full object-cover absolute inset-0"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.4, ease: 'easeInOut' }}
-              />
+          
+          {/* --- LEFT / RIGHT PANEL: IMAGE (Order Changes on Desktop) --- */}
+          <motion.div 
+            layout
+            className={`w-full md:w-1/2 relative overflow-hidden ${isLoginView ? 'md:order-1' : 'md:order-2'}`}
+          >
+            <AnimatePresence mode='wait'>
+               <motion.div
+                 key={isLoginView ? 'img-login' : 'img-reg'}
+                 initial={{ opacity: 0, scale: 1.1 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 exit={{ opacity: 0 }}
+                 transition={{ duration: 0.8 }}
+                 className="absolute inset-0 h-full w-full"
+               >
+                 <img 
+                    src={isLoginView ? loginImage : registerImage} 
+                    alt="Auth Visual" 
+                    className="w-full h-full object-cover"
+                 />
+                 {/* Gradient Overlay */}
+                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-80"></div>
+                 
+                 <div className="absolute bottom-10 left-10 right-10 text-white">
+                    <motion.div 
+                       initial={{ y: 20, opacity: 0 }} 
+                       animate={{ y: 0, opacity: 1 }} 
+                       transition={{ delay: 0.3 }}
+                    >
+                       <p className="text-xs font-bold uppercase tracking-[0.2em] mb-3 text-purple-300">
+                         {isLoginView ? "Welcome Back" : "Join the Movement"}
+                       </p>
+                       <h2 className="text-3xl md:text-4xl font-serif font-bold leading-tight mb-4">
+                         {isLoginView ? "Redefining modern elegance." : "Start your journey with OffMode."}
+                       </h2>
+                       <p className="text-sm text-gray-300 leading-relaxed max-w-xs">
+                         {isLoginView ? "Login to access your curated collection and exclusive offers." : "Create an account to enjoy personalized recommendations and fast checkout."}
+                       </p>
+                    </motion.div>
+                 </div>
+               </motion.div>
             </AnimatePresence>
-          </div>
+          </motion.div>
 
-          {/* --- KOLOM FORMULIR (KIRI ATAU KANAN) --- */}
-          <div className="w-full md:w-1/2 p-8 md:p-12 bg-white dark:bg-gray-800">
-            {/* Menggunakan AnimatePresence untuk transisi form */}
-            <AnimatePresence mode="wait">
-              {isLoginView ? (
-                // --- FORMULIR LOGIN ---
-                <motion.div
-                  key="login"
-                  variants={formContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <motion.h2
-                    className="text-3xl font-bold text-gray-900 dark:text-white mb-3"
-                    variants={itemVariants}
-                  >
-                    Selamat Datang Kembali
-                  </motion.h2>
-                  <motion.p
-                    className="text-gray-600 dark:text-gray-400 mb-8"
-                    variants={itemVariants}
-                  >
-                    Masuk ke akun Anda untuk melanjutkan.
-                  </motion.p>
+          {/* --- FORM PANEL --- */}
+          <motion.div 
+            layout
+            className={`w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center ${isLoginView ? 'md:order-2' : 'md:order-1'}`}
+          >
+            <AnimatePresence mode='wait'>
+               <motion.div
+                 key={isLoginView ? 'form-login' : 'form-reg'}
+                 variants={containerVariants}
+                 initial="hidden"
+                 animate="visible"
+                 exit="exit"
+                 className="w-full max-w-sm mx-auto"
+               >
+                 {/* Header Form */}
+                 <motion.div variants={itemVariants} className="mb-8">
+                    <span className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold text-xs uppercase tracking-widest mb-2">
+                      <Sparkles size={14} /> {isLoginView ? "Member Access" : "New Account"}
+                    </span>
+                    <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 dark:text-white mb-2">
+                      {isLoginView ? "Sign In" : "Sign Up"}
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                      {isLoginView ? "Enter your details to proceed." : "Fill in your details to get started."}
+                    </p>
+                 </motion.div>
 
-                  <FormMessages />
+                 {/* Success / Error Messages */}
+                 <AnimatePresence>
+                    {errors.general && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm">
+                         <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                         <span>{errors.general}</span>
+                      </motion.div>
+                    )}
+                    {successMessage && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3 text-green-600 dark:text-green-400 text-sm">
+                         <CheckCircle size={18} className="shrink-0 mt-0.5" />
+                         <span>{successMessage}</span>
+                      </motion.div>
+                    )}
+                 </AnimatePresence>
 
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Input Email */}
+                 {/* Form Inputs */}
+                 <form onSubmit={handleSubmit} className="space-y-5">
+                    
+                    {!isLoginView && (
+                      <motion.div variants={itemVariants} className="space-y-5">
+                         <InputField icon={User} type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} error={errors.name} />
+                         <InputField icon={Phone} type="tel" placeholder="Phone Number (08...)" value={phone} onChange={e => setPhone(e.target.value)} error={errors.phone} />
+                      </motion.div>
+                    )}
+
                     <motion.div variants={itemVariants}>
-                      <label htmlFor="login-email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Alamat Email
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Mail className="w-5 h-5" />
-                        </span>
-                        <input
-                          type="email"
-                          id="login-email"
-                          placeholder="anda@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className={`w-full pl-12 pr-4 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                      </div>
-                      {errors.email && <p className="text-red-500 text-xs mt-1.5">{errors.email}</p>}
-                    </motion.div>
-
-                    {/* Input Password */}
-                    <motion.div variants={itemVariants}>
-                      <label htmlFor="login-password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Lock className="w-5 h-5" />
-                        </span>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          id="login-password"
-                          placeholder="Minimal 8 karakter"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className={`w-full pl-12 pr-12 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      {errors.password && <p className="text-red-500 text-xs mt-1.5">{errors.password}</p>}
-                    </motion.div>
-
-                    <motion.div className="flex justify-end" variants={itemVariants}>
-                      <a href="#" className="text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400">
-                        Lupa Password?
-                      </a>
+                       <InputField icon={Mail} type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} error={errors.email} />
                     </motion.div>
 
                     <motion.div variants={itemVariants}>
-                      <motion.button type="submit" disabled={isLoading} className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-purple-600 dark:bg-purple-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                        {isLoading ? <motion.div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} /> : <span>Masuk</span>}
-                      </motion.button>
-                    </motion.div>
-                  </form>
-
-                  <motion.p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-8" variants={itemVariants}>
-                    Belum punya akun?{' '}
-                    <button onClick={toggleView} className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 bg-transparent border-none p-0 cursor-pointer">
-                      Daftar di sini
-                    </button>
-                  </motion.p>
-                </motion.div>
-              ) : (
-                // --- FORMULIR REGISTER ---
-                <motion.div
-                  key="register"
-                  variants={formContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <motion.h2
-                    className="text-3xl font-bold text-gray-900 dark:text-white mb-3"
-                    variants={itemVariants}
-                  >
-                    Buat Akun Baru
-                  </motion.h2>
-                  <motion.p
-                    className="text-gray-600 dark:text-gray-400 mb-8"
-                    variants={itemVariants}
-                  >
-                    Bergabunglah dengan kami hari ini.
-                  </motion.p>
-
-                  <FormMessages />
-
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Input Nama */}
-                    <motion.div variants={itemVariants}>
-                      <label htmlFor="register-name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Nama Lengkap
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <User className="w-5 h-5" />
-                        </span>
-                        <input
-                          type="text"
-                          id="register-name"
-                          placeholder="Nama Anda"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className={`w-full pl-12 pr-4 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                      </div>
-                      {errors.name && <p className="text-red-500 text-xs mt-1.5">{errors.name}</p>}
+                       <InputField icon={Lock} isPassword showPass={showPassword} togglePass={() => setShowPassword(!showPassword)} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />
                     </motion.div>
 
-                    {/* Input Email */}
-                    <motion.div variants={itemVariants}>
-                      <label htmlFor="register-email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Alamat Email
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Mail className="w-5 h-5" />
-                        </span>
-                        <input
-                          type="email"
-                          id="register-email"
-                          placeholder="anda@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className={`w-full pl-12 pr-4 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                      </div>
-                      {errors.email && <p className="text-red-500 text-xs mt-1.5">{errors.email}</p>}
-                    </motion.div>
+                    {!isLoginView && (
+                       <motion.div variants={itemVariants}>
+                          <InputField icon={Lock} isPassword showPass={showConfirmPassword} togglePass={() => setShowConfirmPassword(!showConfirmPassword)} placeholder="Confirm Password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} error={errors.confirmPassword} />
+                       </motion.div>
+                    )}
 
-                    {/* Input Password */}
-                    <motion.div variants={itemVariants}>
-                      <label htmlFor="register-password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Lock className="w-5 h-5" />
-                        </span>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          id="register-password"
-                          placeholder="Minimal 8 karakter"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className={`w-full pl-12 pr-12 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      {errors.password && <p className="text-red-500 text-xs mt-1.5">{errors.password}</p>}
-                    </motion.div>
+                    {isLoginView && (
+                       <motion.div variants={itemVariants} className="flex justify-end">
+                          <a href="#" className="text-xs font-bold text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Forgot Password?</a>
+                       </motion.div>
+                    )}
 
-                    {/* Input Konfirmasi Password */}
-                    <motion.div variants={itemVariants}>
-                      <label htmlFor="confirm-password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Konfirmasi Password
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Lock className="w-5 h-5" />
-                        </span>
-                        <input
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          id="confirm-password"
-                          placeholder="Ulangi password Anda"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className={`w-full pl-12 pr-12 py-3 rounded-lg border text-gray-900 dark:text-white bg-transparent dark:bg-gray-700/30 transition-all ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500'
-                            } focus:ring-2 focus:border-transparent outline-none`}
-                        />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      {errors.confirmPassword && <p className="text-red-500 text-xs mt-1.5">{errors.confirmPassword}</p>}
+                    <motion.div variants={itemVariants} className="pt-2">
+                       <button
+                         type="submit"
+                         disabled={isLoading}
+                         className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl font-bold shadow-lg shadow-purple-900/10 hover:shadow-purple-900/20 transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                       >
+                         {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLoginView ? "Sign In" : "Create Account")}
+                         {!isLoading && <ArrowRight size={18} />}
+                       </button>
                     </motion.div>
+                 </form>
 
-                    <motion.div variants={itemVariants}>
-                      <motion.button type="submit" disabled={isLoading} className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-purple-600 dark:bg-purple-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-                        {isLoading ? <motion.div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} /> : <span>Buat Akun</span>}
-                      </motion.button>
-                    </motion.div>
-                  </form>
+                 {/* Footer Switcher */}
+                 <motion.div variants={itemVariants} className="mt-8 text-center">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {isLoginView ? "Don't have an account?" : "Already have an account?"}{' '}
+                      <button onClick={toggleView} className="font-bold text-purple-600 dark:text-purple-400 hover:underline ml-1">
+                        {isLoginView ? "Register Now" : "Login Here"}
+                      </button>
+                    </p>
+                 </motion.div>
 
-                  <motion.p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-8" variants={itemVariants}>
-                    Sudah punya akun?{' '}
-                    <button onClick={toggleView} className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 bg-transparent border-none p-0 cursor-pointer">
-                      Masuk di sini
-                    </button>
-                  </motion.p>
-                </motion.div>
-              )}
+               </motion.div>
             </AnimatePresence>
-          </div>
+          </motion.div>
+
         </motion.div>
       </div>
-    </>
+      <Footer />
+    </div>
   );
 };
 

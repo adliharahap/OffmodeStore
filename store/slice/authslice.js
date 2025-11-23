@@ -1,46 +1,25 @@
-// store/authSlice.js
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { supabase } from "../../lib/supabaseClient";
+import { createSlice } from "@reduxjs/toolkit";
 
-// Async thunk untuk ambil session awal
-export const fetchUserSession = createAsyncThunk(
-  "auth/fetchUserSession",
-  async () => {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.user || null;
-  }
-);
+const initialState = {
+  user: null,
+  isLoading: true, 
+};
 
 const authSlice = createSlice({
   name: "auth",
-  initialState: {
-    user: null,
-    loading: true,
-  },
+  initialState,
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload;
+      state.isLoading = false; 
     },
-    logout: (state) => {
-      supabase.auth.signOut();
+    // ACTION BARU: Reset state ke awal
+    clearAuth: (state) => {
       state.user = null;
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchUserSession.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(fetchUserSession.fulfilled, (state, action) => {
-        state.user = action.payload;
-        state.loading = false;
-      })
-      .addCase(fetchUserSession.rejected, (state) => {
-        state.user = null;
-        state.loading = false;
-      });
+      state.isLoading = false; // Stop loading karena sudah pasti logout
+    }
   },
 });
 
-export const { setUser, logout } = authSlice.actions;
+export const { setUser, clearAuth } = authSlice.actions;
 export default authSlice.reducer;

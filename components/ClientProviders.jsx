@@ -1,19 +1,23 @@
-// File: components/ClientProviders.js (VERSI PERBAIKAN)
-
-"use client"; // Ini adalah kuncinya!
+"use client"; 
 
 import { ThemeProvider } from "next-themes";
 import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
 import AuthListener from "./AuthListener";
-import store from "../store";
+import { store, persistor } from "../store";
 
 export default function ClientProviders({ children }) {
   return (
-    // Bungkus semua provider di sini, di dalam satu Client Component
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <Provider store={store}>
-        <AuthListener /> {/* AuthListener sudah benar di sini */}
-        {children}
+        {/* PersistGate menunda render anak-anaknya sampai data 
+            dari localStorage selesai dimuat ke Redux.
+            loading={null} bisa diganti dengan component <Loading /> jika mau.
+        */}
+        <PersistGate loading={null} persistor={persistor}>
+          <AuthListener /> 
+          {children}
+        </PersistGate>
       </Provider>
     </ThemeProvider>
   );

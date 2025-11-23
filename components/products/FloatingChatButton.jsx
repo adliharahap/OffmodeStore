@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Mail } from 'lucide-react';
+import { MessageSquare, X, Mail, MessagesSquare } from 'lucide-react';
 
 // --- Icon Kustom WhatsApp ---
 // Lucide-react tidak memiliki ikon WhatsApp, jadi kita buat SVG-nya di sini
 const WhatsappIcon = (props) => (
   <svg
-    viewBox="0 0 24 24"
     fill="currentColor"
+    viewBox="0 0 16 16"
     className="w-6 h-6"
+    xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <path d="M19.02 4.97c-2.61-2.61-6.09-4.07-9.82-4.07C4.6 0 .98 3.62.98 8.22c0 1.58.46 3.06 1.3 4.34l-1.32 4.82 4.93-1.3c1.23.78 2.64 1.2 4.1 1.2h.02c4.6 0 8.22-3.62 8.22-8.22 0-3.73-1.46-7.21-4.07-9.82zM12.02 14.88c-1.18 0-2.33-.2-3.39-.58l-.24-.14-2.53.67.68-2.47-.16-.26c-.44-1.09-.68-2.27-.68-3.48 0-3.3 2.69-5.99 6-5.99 1.63 0 3.17.65 4.25 1.73s1.73 2.62 1.73 4.25c-.01 3.3-2.7 5.99-6.01 5.99zm3.5-4.5c-.19-.1-.44-.2-.64-.28-.2-.08-.47-.13-.72-.13-.25 0-.44.05-.58.1-.14.05-.33.24-.48.48-.15.24-.3.48-.4.63-.1.15-.2.15-.38.1-.18-.05-1.04-.38-1.98-1.23-.73-.66-1.22-1.48-1.36-1.72-.14-.24-.03-.38.08-.5.1-.1.22-.25.33-.37.11-.12.18-.2.25-.33s.13-.25.18-.4c.05-.15.03-.28-.02-.38-.05-.1-.22-.48-.3-.66-.08-.18-.16-.15-.24-.15-.08 0-.18-.03-.28-.03-.1 0-.25.03-.38.18-.13.15-.48.45-.48 1.1 0 .65.5 1.28.58 1.38.08.1.95 1.5 2.3 2.05 1.35.55 1.8.68 2.15.63.35-.05.88-.35 1-.7.12-.35.12-.65.08-.75-.04-.1-.18-.15-.37-.25z" />
+    <path d="M11.42 9.49c-.19-.09-1.1-.54-1.27-.61s-.29-.09-.42.1-.48.6-.59.73-.21.14-.4 0a5.13 5.13 0 0 1-1.49-.92 5.25 5.25 0 0 1-1-1.29c-.11-.18 0-.28.08-.38s.18-.21.28-.32a1.39 1.39 0 0 0 .18-.31.38.38 0 0 0 0-.33c0-.09-.42-1-.58-1.37s-.3-.32-.41-.32h-.4a.72.72 0 0 0-.5.23 2.1 2.1 0 0 0-.65 1.55A3.59 3.59 0 0 0 5 8.2 8.32 8.32 0 0 0 8.19 11c.44.19.78.3 1.05.39a2.53 2.53 0 0 0 1.17.07 1.93 1.93 0 0 0 1.26-.88 1.67 1.67 0 0 0 .11-.88c-.05-.07-.17-.12-.36-.21z" />
+    <path d="M13.29 2.68A7.36 7.36 0 0 0 8 .5a7.44 7.44 0 0 0-6.41 11.15l-1 3.85 3.94-1a7.4 7.4 0 0 0 3.55.9H8a7.44 7.44 0 0 0 5.29-12.72zM8 14.12a6.12 6.12 0 0 1-3.15-.87l-.22-.13-2.34.61.62-2.28-.14-.23a6.18 6.18 0 0 1 9.6-7.65 6.12 6.12 0 0 1 1.81 4.37A6.19 6.19 0 0 1 8 14.12z" />
   </svg>
 );
 
@@ -44,7 +46,9 @@ Halo ${product.storeName},
 Saya tertarik dengan produk ini:
 Nama Produk: ${product.name}
 Harga: ${product.price}
-Link Gambar: ${product.imageUrl}
+
+Link Produk:
+${product.productUrl}
 
 Apakah produk ini masih tersedia?
 Terima kasih.
@@ -159,7 +163,7 @@ Terima kasih.
         {/* Tombol Utama (Parent) */}
         <motion.button
           onClick={toggleOpen}
-          className="relative w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl z-10 hover:bg-blue-700 focus:outline-none"
+          className="relative w-16 h-16 bg-purple-700 text-white rounded-full flex items-center justify-center shadow-xl z-10 hover:bg-purple-600 duration-100 transition-all focus:outline-none"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           aria-label={isOpen ? "Tutup opsi chat" : "Buka opsi chat"}
@@ -174,7 +178,7 @@ Terima kasih.
               transition={{ type: 'spring', stiffness: 500, damping: 30, duration: 0.2 }}
               className="absolute" // Ikon saling menimpa di tengah
             >
-              {isOpen ? <X className="w-8 h-8" /> : <MessageSquare className="w-8 h-8" />}
+              {isOpen ? <X className="w-8 h-8" /> : <MessagesSquare className="w-8 h-8" />}
             </motion.div>
           </AnimatePresence>
         </motion.button>

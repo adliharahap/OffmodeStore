@@ -8,7 +8,7 @@ import Introduction from "../../components/Home/Introduction";
 
 export default function Home() {
   return (
-    <div className="bg-white text-gray-800 antialiased">
+    <div>
       <Header />
       <main>
         <HeroSection />

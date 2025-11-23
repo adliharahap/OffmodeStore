@@ -1,298 +1,260 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  motion,
-  useMotionValue,
-  useTransform,
-  animate,
-  useInView,
-} from 'framer-motion';
-
-
-// --- Ikon Baru dari Lucide-React ---
-import {
-  Gem,
-  Palette,
-  Users,
-  ShieldCheck,
-  Truck,
-  Star as StarIcon,
-  CheckCircle,
-  Sparkle,
-  Feather
+import React, { useRef, useEffect, useState } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence, useAnimation } from 'framer-motion';
+import { 
+  Feather, Palette, Gem, Users, Star, Truck, ArrowUpRight, ChevronDown, Plus, Minus 
 } from 'lucide-react';
-import TestimonialMarquee from './TestimonialMarquee';
 
-// --- Varian Animasi (Tetap) ---
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.2 }
-  },
-};
+// --- BAGIAN 1: KOMPONEN TESTIMONIAL (ADAPTIVE) ---
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 100 }
-  },
-};
-
-const sectionFadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', duration: 0.8, bounce: 0.3 }
-  }
-};
-
-// --- Komponen Counter (Tetap) ---
-const AnimatedStat = ({ toValue, label }) => {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, latest => Math.round(latest));
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  useEffect(() => {
-    if (isInView) {
-      animate(count, toValue, {
-        duration: 2,
-        ease: "easeOut"
-      });
-    }
-  }, [isInView, count, toValue]);
-
+const TestimonialCard = ({ quote, name, role, stars }) => {
   return (
-    <div ref={ref} className="text-center">
-      <span className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-linear-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400">
-        <motion.span>{rounded}</motion.span>+
-      </span>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{label}</p>
+    <div className="shrink-0 w-[85vw] md:w-[450px] p-8 border-l border-gray-200 dark:border-white/10 bg-white dark:bg-[#111] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors duration-300 relative group">
+      {/* Dekorasi Kutip */}
+      <div className="absolute top-6 right-8 text-6xl font-serif text-gray-100 dark:text-white/5 group-hover:text-purple-200 dark:group-hover:text-purple-500/10 transition-colors">”</div>
+      
+      <div className="flex gap-1 mb-6">
+        {Array.from({ length: stars }).map((_, i) => (
+          // Star Color: Kuning/Emas di Light, Putih di Dark (atau bisa kuning di keduanya)
+          <Star key={i} size={14} className="fill-gray-900 dark:fill-white text-gray-900 dark:text-white" />
+        ))}
+      </div>
+
+      <p className="text-xl md:text-2xl font-serif text-gray-800 dark:text-gray-200 italic leading-relaxed mb-8 opacity-90">"{quote}"</p>
+      
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-linear-to-tr from-purple-600 to-indigo-600 dark:from-purple-900 dark:to-slate-800 border border-white/20 flex items-center justify-center text-xs font-bold text-white uppercase tracking-wider shadow-md">
+          {name.substring(0, 2)}
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-widest">{name}</h4>
+          <p className="text-xs text-gray-500 dark:text-gray-500 uppercase tracking-wider mt-0.5">{role}</p>
+        </div>
+      </div>
     </div>
   );
 };
 
-// --- Komponen Utama: Introduction ---
-const Introduction = () => {
+const testimonials = [
+  { quote: "Kualitas kainnya mengingatkan saya pada brand high-end Eropa. Sangat impresif.", name: "Andi R.", role: "Fashion Enthusiast", stars: 5 },
+  { quote: "Potongan bajunya sangat flattering. Susah mencari cuttingan seperti ini.", name: "Sarah K.", role: "Creative Director", stars: 5 },
+  { quote: "Pengalaman unboxing yang mewah. Detail kecilnya diperhatikan.", name: "Budi S.", role: "Entrepreneur", stars: 5 },
+  { quote: "Basic wear terbaik yang tidak cepat melar setelah dicuci berkali-kali.", name: "Citra L.", role: "Architect", stars: 5 },
+  { quote: "Pelayanan sangat personal. Rasanya seperti belanja di butik eksklusif.", name: "David H.", role: "Musician", stars: 5 },
+];
 
-  // Fitur (Icon diupdate ke Lucide)
-  const features = [
-    { title: 'Premium Quality Materials', desc: 'Diseleksi ketat agar tetap lembut, kuat, dan tahan lama.', icon: Feather },
-    { title: 'Signature Modern Designs', desc: 'Siluet yang elegan, versatile, dan mudah dipadu padankan.', icon: Palette },
-    { title: 'Handcrafted Details', desc: 'Setiap detail diperhatikan untuk menghasilkan finishing terbaik.', icon: Gem },
-    { title: 'Comfort for Everyday', desc: 'Ringan, breathable, dan nyaman dipakai dalam aktivitas apa pun.', icon: Users },
-    { title: 'Limited Monthly Drops', desc: 'Dirilis dalam jumlah terbatas untuk menjaga eksklusivitas.', icon: StarIcon }, // Ganti nama di sini
-    { title: 'Secure & Fast Delivery', desc: 'Packing rapi dan terjamin aman hingga ke tangan Anda.', icon: Truck },
-  ];
+const duplicatedTestimonials = [...testimonials, ...testimonials];
 
-  const stats = [
-    { value: 500, label: 'Produk Original' },
-    { value: 100, label: 'Brand Eksklusif' },
-    { value: 10000, label: 'Pelanggan Puas' },
-  ];
+const TestimonialMarquee = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const controls = useAnimation();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    if (window.innerWidth >= 768) {
+        controls.start({
+          x: "-50%",
+          transition: { duration: 50, ease: "linear", repeat: Infinity },
+        });
+    }
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, [controls]);
 
   return (
-    <>
-      {/* === Bagian Hero (Layout 2 Kolom Baru) === */}
-      <section className="relative grid min-h-screen grid-cols-1 items-center gap-10 bg-stone-50 dark:bg-gray-900 md:grid-cols-2">
-
-        {/* Kolom Kiri: Pinterest Grid*/}
-        <motion.div
-          className="w-full h-[60vh] md:h-[80vh] rounded-2xl overflow-hidden relative md:ml-6"
-          initial={{ opacity: 0, x: -50 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          viewport={{ once: true }}
-        >
-          {/* Mulai: Konten Grid Baru */}
-          <motion.div
-            className="grid h-full grid-cols-2 grid-rows-2 gap-2 md:gap-4 p-2 md:p-4"
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            {/* Gambar 1: Tinggi (Span 2 baris) */}
-            <motion.div
-              className="col-span-1 row-span-2 rounded-lg overflow-hidden"
-              variants={itemVariants}
-            >
-              <img
-                src="https://i.pinimg.com/736x/04/ce/7e/04ce7ee3d4daebdce6271220ee290a1e.jpg"
-                alt="Fashion Look 1"
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              />
-            </motion.div>
-
-            {/* Gambar 2: Kotak (Atas Kanan) */}
-            <motion.div
-              className="col-span-1 row-span-1 rounded-lg overflow-hidden"
-              variants={itemVariants}
-            >
-              <img
-                src="https://i.pinimg.com/1200x/b4/4f/23/b44f23a1f6c200fbdc4b8052430742a9.jpg"
-                alt="Fashion Detail"
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              />
-            </motion.div>
-
-            {/* Gambar 3: Kotak (Bawah Kanan) */}
-            <motion.div
-              className="col-span-1 row-span-1 rounded-lg overflow-hidden"
-              variants={itemVariants}
-            >
-              <img
-                src="https://i.pinimg.com/736x/a2/0e/c6/a20ec6085a0537cc014790083c3f69c3.jpg"
-                alt="Fabric Texture"
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              />
-            </motion.div>
-          </motion.div>
-          {/* Selesai: Konten Grid Baru */}
-        </motion.div>
-
-        {/* Kolom Kanan: Teks */}
-        <div className="container px-6 flex flex-col justify-start md:justify-center text-center md:text-left">
-          <motion.h2
-            className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight"
-            variants={sectionFadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
-          >
-            Redefinisi Gaya Anda
-          </motion.h2>
-
-          <motion.p
-            className="mt-4 text-lg md:text-xl font-medium text-gray-700 dark:text-gray-300 max-w-lg"
-            variants={sectionFadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} transition={{ delay: 0.1 }}
-          >
-            Koleksi premium yang memadukan kenyamanan dan estetika modern.
-          </motion.p>
-
-          {/* List Keunggulan dengan Deskripsi */}
-          <motion.ul
-            className="mt-10 space-y-6 max-w-xl"
-            variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} transition={{ delay: 0.2 }}
-          >
-            <motion.li variants={itemVariants} className="flex items-start gap-4">
-              <CheckCircle className="w-6 h-6 text-purple-500 mt-1 shrink-0" strokeWidth={2.2} />
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Material Pilihan Terbaik</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Setiap kain dipilih dengan detail untuk kenyamanan dan durabilitas.</p>
-              </div>
-            </motion.li>
-
-            <motion.li variants={itemVariants} className="flex items-start gap-4">
-              <Sparkle className="w-6 h-6 text-purple-500 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Finishing yang Rapi & Presisi</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Dijahit dengan teknik presisi untuk tampilan premium yang menawan.</p>
-              </div>
-            </motion.li>
-
-            <motion.li variants={itemVariants} className="flex items-start gap-4">
-              <Gem className="w-6 h-6 text-purple-500 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Nyaman Dipakai Seharian</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Ringan, breathable, dan tetap stylish — tanpa kompromi.</p>
-              </div>
-            </motion.li>
-          </motion.ul>
-          {/* CTA dipindah ke sini */}
-          <motion.div
-            className="mt-10"
-            variants={sectionFadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} transition={{ delay: 0.4 }}
-          >
-            <motion.a
-              href="#"
-              className="inline-block px-10 py-4 text-lg font-semibold text-white rounded-full shadow-lg
-                         bg-linear-to-r from-purple-600 to-blue-600
-                         dark:from-purple-500 dark:to-blue-500
-                         transition-all duration-300"
-              whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(0,0,0,0.2)" }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Lihat Koleksi
-            </motion.a>
-          </motion.div>
+    <div className="w-full py-20 border-t border-gray-200 dark:border-white/10 relative bg-stone-50 dark:bg-[#0a0a0a]">
+      <div className="container mx-auto px-6 mb-10 flex items-end justify-between">
+         <div>
+            <h3 className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase tracking-[0.2em] mb-2">Community</h3>
+            <h2 className="text-3xl md:text-4xl font-serif text-gray-900 dark:text-white">Voices of Style</h2>
+         </div>
+         <div className="hidden md:block w-1/3 h-px bg-gray-300 dark:bg-white/10 mb-2"></div>
+      </div>
+      {isMobile ? (
+        <div className="flex flex-col gap-6 px-6">
+          {testimonials.slice(0, 3).map((testi, idx) => (
+            <div key={idx} className="border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                <TestimonialCard {...testi} />
+            </div>
+          ))}
         </div>
-      </section >
-
-      {/* === Bagian Sisa (Konten di bawah Hero) === */}
-      <motion.section className="bg-stone-50 dark:bg-gray-900 relative overflow-hidden py-5" >
-        <div className="container px-6 text-center relative z-10">
-          <h2 className="text-3xl font-semibold text-gray-900 dark:text-white">
-            Kenapa Memilih Kami?
-          </h2>
-          <p className="text-gray-600 dark:text-gray-300 mt-3 max-w-2xl mx-auto">
-            Setiap detail dirancang untuk memberikan kualitas terbaik dan kenyamanan saat dikenakan.
-          </p>
-
-          <motion.div
-            className="grid md:grid-cols-3 gap-8 mt-16"
-            variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}
-          >
-            {features.map((feature, idx) => (
-              <motion.div
-                key={idx}
-                className="p-8 rounded-2xl shadow-lg border border-gray-100/50
-                           bg-linear-to-br from-white to-gray-50
-                           dark:from-gray-800 dark:to-gray-800/70 dark:border-gray-700
-                           backdrop-blur-sm transition-all duration-300 hover:shadow-2xl"
-                variants={itemVariants}
-              >
-                <div className="text-4xl mb-4 text-purple-600 dark:text-purple-400">
-                  <feature.icon className="w-12 h-12 inline-block" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400">{feature.desc}</p>
-              </motion.div>
+      ) : (
+        <div className="w-full overflow-hidden border-y border-gray-200 dark:border-white/10 bg-stone-50 dark:bg-[#0a0a0a]">
+          <motion.div className="flex will-change-transform" animate={controls}>
+            {duplicatedTestimonials.map((testi, idx) => (
+              <TestimonialCard key={idx} {...testi} />
             ))}
           </motion.div>
-
-          {/* === Statistik Brand — Section === */}
-          <section className="w-full text-center py-10 md:pt-28 md:pb-20">
-
-            {/* Title */}
-            <motion.h3
-              className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white"
-              variants={sectionFadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
-            >
-              Dipercaya & Dicintai Pelanggan Kami
-            </motion.h3>
-
-            {/* Deskripsi */}
-            <motion.p
-              className="mt-3 text-gray-600 dark:text-gray-400 max-w-3xl mx-auto text-base md:text-lg"
-              variants={sectionFadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} transition={{ delay: 0.1 }}
-            >
-              Setiap detail pada koleksi kami dibuat dengan dedikasi — dan hasilnya terlihat dari kepercayaan yang terus tumbuh.
-            </motion.p>
-
-            {/* Statistik */}
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6 mt-16"
-              variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}
-            >
-              {stats.map((stat, idx) => (
-                <motion.div key={idx} variants={itemVariants}>
-                  <AnimatedStat toValue={stat.value} label={stat.label} />
-                </motion.div>
-              ))}
-            </motion.div>
-
-          </section>
-          
-          {/* Komponen TestimonialMarquee sekarang dipanggil dari file yang sama */}
-          <TestimonialMarquee />
         </div>
-      </motion.section>
-    </>
+      )}
+    </div>
   );
 };
 
-// Pastikan untuk mengekspor 'Introduction' sebagai default
+// --- BAGIAN 2: KOMPONEN FEATURE ACCORDION (ADAPTIVE) ---
+
+const FeatureRow = ({ title, desc, icon: Icon, index }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div 
+      onClick={() => setIsOpen(!isOpen)}
+      className="group cursor-pointer border-b border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/2 transition-colors duration-300"
+    >
+      <div className="flex items-center justify-between py-8">
+        {/* Bagian Kiri */}
+        <div className="flex items-center gap-6">
+          <span className="text-xs font-mono text-gray-400 dark:text-gray-600">0{index + 1}</span>
+          <div className={`p-3 rounded-full transition-all duration-300 ${
+            isOpen 
+              ? 'bg-purple-600 text-white' 
+              : 'bg-purple-50 text-purple-600 dark:bg-white/5 dark:text-purple-300 group-hover:bg-purple-100 dark:group-hover:bg-white/10'
+          }`}>
+            <Icon size={20} strokeWidth={1.5} />
+          </div>
+          <h3 className={`text-xl md:text-2xl font-serif transition-colors ${
+            isOpen 
+              ? 'text-gray-900 dark:text-white' 
+              : 'text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white'
+          }`}>
+            {title}
+          </h3>
+        </div>
+        
+        {/* Bagian Kanan */}
+        <div className="pr-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+           {isOpen ? <Minus size={20} /> : <Plus size={20} />}
+        </div>
+      </div>
+
+      {/* Bagian Bawah */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="pb-8 pl-18 md:pl-22 pr-4 md:pr-20">
+              <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed max-w-2xl">
+                {desc}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const StatItem = ({ value, label }) => (
+  <div className="flex flex-col items-center md:items-start border-r border-gray-200 dark:border-white/10 last:border-0 px-8 py-4">
+    <span className="text-4xl md:text-5xl font-serif text-gray-900 dark:text-white mb-2">{value}</span>
+    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-500">{label}</span>
+  </div>
+);
+
+// --- BAGIAN 3: KOMPONEN UTAMA ---
+
+const Introduction = () => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "10%"]);
+
+  const features = [
+    { title: 'Curated Materials', desc: 'Kami tidak sembarangan memilih kain. Setiap benang diseleksi dari supplier terbaik yang mengutamakan durabilitas dan kelembutan.', icon: Feather },
+    { title: 'Timeless Silhouette', desc: 'Desain yang tidak akan basi dimakan zaman. Kami fokus pada potongan klasik yang dimodernisasi.', icon: Palette },
+    { title: 'Artisan Details', desc: 'Perbedaan ada pada detail. Jahitan yang presisi, kancing berkualitas tinggi, dan finishing yang rapi.', icon: Gem },
+    { title: 'Everyday Comfort', desc: 'Gaya tidak harus menyakitkan. Kami merancang pola (pattern) yang mengikuti gerak tubuh alami manusia.', icon: Users },
+    { title: 'Limited Archives', desc: 'Kami memproduksi dalam jumlah terbatas (small batch) untuk menjaga eksklusivitas dan mengurangi limbah fashion.', icon: Star },
+    { title: 'Global Shipping', desc: 'Kami melayani pengiriman ke seluruh wilayah dengan standar pengemasan premium yang aman.', icon: Truck },
+  ];
+
+  return (
+    <section ref={containerRef} className="relative w-full bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white overflow-hidden border-t border-gray-200 dark:border-white/5 transition-colors duration-500">
+      
+      {/* Background Gradient Simple (Adaptive) */}
+      <div className="absolute inset-0 -z-10 bg-linear-to-b from-stone-50 to-white dark:from-[#0a0a0a] dark:to-[#111]"></div>
+
+      {/* --- 1. MANIFESTO SECTION (Split) --- */}
+      <div className="container mx-auto px-6 pt-24 pb-20">
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-center lg:items-start">
+           
+           {/* Left: Typography */}
+           <div className="w-full lg:w-1/2 lg:sticky lg:top-32">
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <span className="text-purple-600 dark:text-purple-400 font-bold tracking-[0.2em] text-xs uppercase mb-4 block">The Philosophy</span>
+                <h2 className="text-4xl md:text-6xl lg:text-7xl font-serif leading-[1.1] mb-8 text-gray-900 dark:text-white">
+                  Not just clothing. <br />
+                  <span className="text-gray-500 dark:text-gray-600 italic">A statement.</span>
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed max-w-md mb-10">
+                   Kami percaya gaya sejati tidak berteriak. Ia berbisik lewat kualitas jahitan dan detail. OffMode hadir untuk mereka yang mengerti perbedaan tersebut.
+                </p>
+
+                <div className="flex border border-gray-200 dark:border-white/10 rounded-2xl bg-white/50 dark:bg-[#111] backdrop-blur-sm w-fit shadow-sm dark:shadow-none">
+                   <StatItem value="500+" label="Products" />
+                   <StatItem value="10k+" label="Community" />
+                </div>
+              </motion.div>
+           </div>
+
+           {/* Right: Image (Adaptive Border & Shadow) */}
+           <div className="w-full lg:w-1/2 relative flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-lg aspect-4/3 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#111] shadow-2xl shadow-gray-200/50 dark:shadow-none">
+                 <motion.div style={{ y }} className="absolute inset-0 h-[120%] w-full -top-[10%] will-change-transform">
+                    <img 
+                      src="https://images.unsplash.com/photo-1485230405346-71acb9518d9c?q=80&w=1000&auto=format&fit=crop" 
+                      alt="Editorial Fashion" 
+                      className="w-full h-full object-cover opacity-100 dark:opacity-80"
+                      loading="lazy" 
+                    />
+                 </motion.div>
+                 
+                 {/* Overlay Gradient: Dark mode only to blend image */}
+                 <div className="absolute inset-0 bg-linear-to-t from-black/10 via-transparent to-transparent dark:from-[#0a0a0a] dark:via-transparent dark:to-transparent opacity-90"></div>
+                 
+                 {/* Floating Quote */}
+                 <div className="absolute bottom-6 left-6 right-6 p-5 border border-white/40 dark:border-white/10 bg-white/80 dark:bg-[#0a0a0a]/90 backdrop-blur-md rounded-lg shadow-lg">
+                    <p className="font-serif text-lg italic text-gray-900 dark:text-white/90">"Fashion fades, only style remains the same."</p>
+                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-2">— Coco Chanel</p>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      {/* --- 2. FEATURES LIST (Adaptive Borders & Text) --- */}
+      <div className="container mx-auto px-6 py-20 border-t border-gray-200 dark:border-white/10">
+         <div className="mb-12">
+            <h3 className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase tracking-[0.2em] mb-2">The Standards</h3>
+            <h2 className="text-3xl md:text-4xl font-serif text-gray-900 dark:text-white">Why OffMode?</h2>
+         </div>
+
+         <div className="flex flex-col">
+            {features.map((feature, idx) => (
+               <FeatureRow key={idx} index={idx} {...feature} />
+            ))}
+         </div>
+      </div>
+
+      {/* --- 3. TESTIMONIALS --- */}
+      <TestimonialMarquee />
+
+    </section>
+  );
+};
+
 export default Introduction;

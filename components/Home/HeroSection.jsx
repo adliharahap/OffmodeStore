@@ -1,192 +1,242 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import React, { useRef } from "react";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, useMotionTemplate } from "framer-motion";
+import { ArrowRight, Star, Play, MoveRight } from "lucide-react";
+import Link from "next/link";
 
-// Varian animasi untuk kontainer, akan menganimasikan anak-anaknya satu per satu
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15, // Waktu jeda antar animasi anak
-      delayChildren: 0.2,
-    },
-  },
+// --- 1. KOMPONEN PENDUKUNG ---
+
+// Teks berjalan (Marquee) - Adaptive Colors
+const InfiniteMarquee = () => {
+  return (
+    // Light: bg-white border-gray-200 | Dark: bg-white (tetap putih untuk kontras atau bisa diubah)
+    // Disini saya buat tetap putih di kedua mode agar konsisten sebagai "pita", tapi border disesuaikan.
+    <div className="absolute bottom-0 left-0 w-full overflow-hidden bg-white/90 backdrop-blur-sm text-black py-3 z-20 border-t border-gray-200 dark:border-gray-800">
+      <motion.div
+        className="flex whitespace-nowrap"
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+      >
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex items-center gap-8 mx-8">
+            <span className="text-lg font-bold tracking-widest uppercase">New Season 2025</span>
+            <Star size={14} className="fill-black" />
+            <span className="text-lg font-serif italic">Premium Collection</span>
+            <Star size={14} className="fill-black" />
+            <span className="text-lg font-bold tracking-widest uppercase">Limited Edition</span>
+            <Star size={14} className="fill-black" />
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
 };
 
-// Varian animasi untuk setiap item (teks, tombol, dll.)
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 100, damping: 12 },
-  },
-};
+// Efek Tilt pada Gambar Utama
+const TiltCard = ({ src, alt, className }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
 
-const HeroSection = () => {
-  // Anda bisa mengganti ini dengan path gambar Anda
-  const currentImage = '/landingpage3.jpg';
+  const mouseX = useSpring(x, { stiffness: 150, damping: 15 });
+  const mouseY = useSpring(y, { stiffness: 150, damping: 15 });
 
-  // --- Komponen Bola Gradien (Baru) ---
-  const AnimatedGradientOrbs = () => {
-    // 1. Orb Pengikut Kursor (dengan spring/delay)
-    const mouse = {
-      x: useMotionValue(0),
-      y: useMotionValue(0)
-    };
-  
-    // Gunakan spring untuk "melembutkan" gerakan
-    const smoothOptions = { damping: 20, stiffness: 150, mass: 0.5 };
-    const smoothMouse = {
-      x: useSpring(mouse.x, smoothOptions),
-      y: useSpring(mouse.y, smoothOptions)
-    };
-  
-    useEffect(() => {
-      const handleMouseMove = (e) => {
-        mouse.x.set(e.clientX);
-        mouse.y.set(e.clientY);
-      };
-      window.addEventListener("mousemove", handleMouseMove);
-      return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, [mouse.x, mouse.y]);
-  
-    return (
-      <>
-        {/* Orb 1: Mengikuti kursor */}
-        <motion.div
-          className="absolute top-0 left-0 w-[400px] h-[400px] bg-linear-to-br from-purple-200 to-blue-200 rounded-full opacity-30 dark:opacity-10 filter blur-3xl transform -translate-x-1/2 -translate-y-1/2 z-10"
-          style={{ x: smoothMouse.x, y: smoothMouse.y }}
-        />
-      </>
-    );
-  };
+  function handleMouseMove({ currentTarget, clientX, clientY }) {
+    const { left, top, width, height } = currentTarget.getBoundingClientRect();
+    const xPct = (clientX - left) / width - 0.5;
+    const yPct = (clientY - top) / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  }
+
+  function handleMouseLeave() {
+    x.set(0);
+    y.set(0);
+  }
+
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], [7, -7]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-7, 7]);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-gray-900 text-white font-sans overflow-hidden">
-      <AnimatedGradientOrbs />
-      {/* 1. Latar Belakang Gambar dan Overlay */}
-      <motion.div
-        className="absolute inset-0 z-0"
-        initial={{ opacity: 0, scale: 1.05 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.5, ease: 'easeInOut' }}
-      >
-        <img
-          src={currentImage}
-          alt="Branded Fashion Background"
-          className="w-full h-full object-cover"
-          // Fallback jika gambar gagal dimuat
-          onError={(e) => {
-            e.currentTarget.src = 'https://placehold.co/1920x1080/333/999?text=Fashion+Image';
-            e.currentTarget.alt = 'Placeholder Image';
-          }}
-        />
-        {/* Overlay yang sedikit lebih gelap untuk kontras yang lebih baik */}
-        <div className="absolute inset-0 bg-black/50"></div>
-      </motion.div>
+    <motion.div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+      className={`relative group ${className}`}
+    >
+      {/* Glow Effect: Ungu di Dark, Sedikit lebih gelap di Light */}
+      <div style={{ transform: "translateZ(50px)" }} className="absolute inset-0 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-purple-500/20 blur-2xl -z-10" />
+      
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover rounded-xl shadow-2xl border border-black/5 dark:border-white/10"
+        style={{ transform: "translateZ(20px)" }}
+      />
+      
+      {/* Overlay Gradient: Tetap gelap di bawah agar gambar pop-out */}
+      <div className="absolute inset-0 rounded-xl bg-linear-to-t from-black/40 to-transparent pointer-events-none" />
+    </motion.div>
+  );
+};
 
-      {/* 2. Kontainer Konten (Header + Teks Hero + Footer Tahun) */}
-      <motion.div
-        className="relative z-10 w-full min-h-screen flex flex-col px-6 pt-3 pb-5"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* 2a. Header (Nama Toko) */}
-        <motion.header
-          className="flex justify-start items-start w-full"
-          variants={itemVariants}
+// --- 2. VARIAN ANIMASI ---
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.2, delayChildren: 0.3 },
+  },
+};
+
+const fadeInUp = {
+  hidden: { y: 60, opacity: 0 },
+  show: { 
+    y: 0, 
+    opacity: 1,
+    transition: { type: "spring", stiffness: 50, damping: 20 }
+  },
+};
+
+const revealImage = {
+  hidden: { scale: 1.2, opacity: 0 },
+  show: { 
+    scale: 1, 
+    opacity: 1,
+    transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
+  },
+};
+
+
+// --- 3. MAIN COMPONENT ---
+const HeroSection = () => {
+  const mainImage = "https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=2073&auto=format&fit=crop"; 
+  const secondaryImage = "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1000&auto=format&fit=crop";
+
+  return (
+    // ROOT: bg-stone-50 (Light) vs bg-[#0a0a0a] (Dark)
+    <section className="relative w-full min-h-[110vh] bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white overflow-hidden flex flex-col transition-colors duration-500">
+      
+      {/* --- Background Texture (Noise) --- */}
+      {/* Mix blend mode disesuaikan agar noise terlihat di light mode juga */}
+      <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 mix-blend-multiply dark:mix-blend-normal" 
+           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>
+      </div>
+
+      {/* --- Gradient Blurs (PARTIKEL YANG TIDAK DIBUANG) --- */}
+      {/* Light: Warna lebih soft (purple-300/40) | Dark: Warna deep (purple-900/20) */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-purple-300/40 dark:bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[-10%] w-[40vw] h-[40vw] bg-indigo-300/40 dark:bg-indigo-900/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* --- Main Grid Layout --- */}
+      <div className="relative z-10 container mx-auto px-6 h-full flex-1 flex flex-col lg:flex-row items-center lg:items-stretch pt-24 lg:pt-0 pb-20">
+        
+        {/* 1. LEFT COLUMN: Typography & Content */}
+        <motion.div 
+          className="w-full lg:w-1/2 flex flex-col justify-center items-start z-20 mb-12 lg:mb-0"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
         >
-          {/* Sisi Kiri: Nama Toko */}
-          <div>
-            <h3
-              className="text-sm md:text-1xl font-bold font-poppins tracking-wide"
-              style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
-            >
-              OffMode Store
-            </h3>
-            <p className="text-sm font-semibold font-poppins text-amber-400 tracking-wider">
-              KOLEKSI PREMIUM
-            </p>
-          </div>
-        </motion.header>
-
-        {/* 2b. Konten Hero Utama (Tengah) */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <motion.h1
-            className="text-5xl sm:text-6xl md:text-7xl font-bold font-serif tracking-tight"
-            style={{ textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}
-            variants={itemVariants}
-          >
-            Exclusive Branded Fashion,
-          </motion.h1>
-          <motion.h2
-            className="text-5xl sm:text-6xl md:text-7xl font-bold font-serif tracking-tight mt-2"
-            style={{ textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}
-            variants={itemVariants}
-          >
-            Elegantly Yours.
-          </motion.h2>
-          <motion.p
-            className="mt-6 text-lg md:text-xl max-w-2xl mx-auto font-light text-gray-200"
-            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
-            variants={itemVariants}
-          >
-            Temukan koleksi fashion branded premium pilihan yang memadukan
-            gaya modern dan keanggunan abadi.
-          </motion.p>
-          
-          {/* Tombol Aksi dengan Animasi Loop */}
-          <motion.div variants={itemVariants} className="mt-12">
-            <motion.a
-              href="#"
-              // DIHAPUS: transition-all duration-300 ease-in-out
-              // Ini menyebabkan konflik dengan 'transition' dari Framer Motion
-              className="bg-transparent border-2 border-white text-white px-10 py-3 rounded-full font-semibold text-lg"
-              // Animasi loop untuk pulsing
-              animate={{
-                scale: [1, 1.03, 1], // Animasi membesar sedikit dan kembali
-                borderColor: ['rgba(255, 255, 255, 1)', 'rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 1)'], // Animasi border juga
-              }}
-              transition={{
-                duration: 2, // Durasi satu siklus animasi
-                ease: 'easeInOut',
-                repeat: Infinity, // Ulangi tanpa henti
-                repeatType: 'reverse', // Bolak-balik animasi
-              }}
-              // Animasi saat hover (akan menimpa animasi loop)
-              whileHover={{
-                scale: 1.05,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(4px)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                borderColor: 'rgba(255, 255, 255, 1)', // Pastikan border putih solid saat hover
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Lihat Katalog
-            </motion.a>
+          {/* Badge */}
+          <motion.div variants={fadeInUp} className="flex items-center gap-3 mb-6">
+            <span className="h-px w-12 bg-purple-600 dark:bg-purple-400"></span>
+            <span className="text-purple-700 dark:text-purple-300 uppercase tracking-[0.2em] text-xs font-bold">Est. 2021</span>
           </motion.div>
+
+          {/* Headline Besar */}
+          <motion.h1 variants={fadeInUp} className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-serif leading-[0.9] mb-6 text-gray-900 dark:text-white">
+            Beyond <br />
+            <span className="italic font-light text-gray-500 dark:text-gray-400">Classic</span> <br />
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-gray-900 to-gray-500 dark:from-white dark:to-gray-400">Fashion.</span>
+          </motion.h1>
+
+          <motion.p variants={fadeInUp} className="text-gray-600 dark:text-gray-400 text-lg max-w-md leading-relaxed mb-10 border-l border-gray-300 dark:border-gray-800 pl-6">
+            OffMode Store menghadirkan kurasi eksklusif yang memadukan estetika urban dengan kenyamanan premium. Definisikan ulang gaya Anda.
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div variants={fadeInUp} className="flex flex-wrap gap-4 items-center">
+            <Link href='/products' className="group relative px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full font-bold text-sm overflow-hidden transition-all hover:pr-12 shadow-lg shadow-gray-300 dark:shadow-none">
+              <span className="relative z-10">SHOP COLLECTION</span>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                <ArrowRight size={16} />
+              </div>
+              <div className="absolute inset-0 bg-white/10 dark:bg-purple-50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 z-0" />
+            </Link>
+            
+            <button className="flex items-center gap-3 px-6 py-4 text-gray-600 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors group">
+               <div className="w-10 h-10 rounded-full border border-gray-300 dark:border-white/20 flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-white/10 transition-all">
+                 <Play size={14} className="fill-gray-900 dark:fill-white ml-1" />
+               </div>
+               <span className="text-sm font-medium tracking-wide uppercase">Watch Film</span>
+            </button>
+          </motion.div>
+        </motion.div>
+
+
+        {/* 2. RIGHT COLUMN: Visuals & Parallax */}
+        <div className="w-full lg:w-1/2 relative flex items-center justify-center lg:justify-end h-[500px] lg:h-auto perspective-1000">
+            
+            {/* Gambar Utama (Besar) */}
+            <motion.div 
+                className="relative w-[85%] h-[80%] lg:h-[75%] z-10"
+                variants={revealImage}
+                initial="hidden"
+                animate="show"
+            >
+               <TiltCard src={mainImage} alt="Fashion Model Main" className="w-full h-full" />
+               
+               {/* Floating Label/Price Tag */}
+               <motion.div 
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1, duration: 0.8 }}
+                  className="absolute top-10 -right-6 md:-right-12 bg-white/80 dark:bg-white/10 backdrop-blur-md border border-white/40 dark:border-white/20 p-4 rounded-xl shadow-xl z-30 flex items-center gap-4 max-w-[200px]"
+               >
+                  <div className="bg-black p-2 rounded-full shadow-sm">
+                    <Star size={16} className="text-yellow-400 fill-yellow-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-300 uppercase tracking-wider">Featured</p>
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">Urban Jacket V2</p>
+                  </div>
+               </motion.div>
+            </motion.div>
+
+            {/* Gambar Kedua (Kecil / Floating) */}
+            <motion.div 
+                className="absolute bottom-0 left-0 lg:left-10 w-[40%] h-[35%] z-20 hidden sm:block"
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.8, ease: "backOut" }}
+            >
+                <TiltCard src={secondaryImage} alt="Fashion Detail" className="w-full h-full" />
+            </motion.div>
+
+            {/* Dekorasi Circle Text di belakang (Adaptive Fill) */}
+            <motion.div 
+              className="absolute top-10 right-10 lg:right-20 w-32 h-32 z-0 opacity-30"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+            >
+              <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                <path id="curve" d="M 50 50 m -37 0 a 37 37 0 1 1 74 0 a 37 37 0 1 1 -74 0" fill="transparent" />
+                <text className="text-[10px] font-bold uppercase tracking-widest fill-gray-900 dark:fill-white">
+                  <textPath href="#curve">
+                    OffMode • Premium Quality • Since 2021 •
+                  </textPath>
+                </text>
+              </svg>
+            </motion.div>
+
         </div>
 
-        {/* 2c. Footer (Tahun di Kanan Bawah) */}
-        <motion.footer
-          className="flex justify-end items-end w-full mt-auto" // mt-auto mendorong footer ke bawah
-          variants={itemVariants}
-        >
-          <p
-            // DIUBAH: Ukuran font diperbesar dan ditambahkan text-right
-            className="text-xl md:text-2xl font-semibold font-serif text-gray-300 text-right"
-            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
-          >
-            {/* DIUBAH: Ditambahkan <br /> untuk ganti baris */}
-            Since <br /> 2021
-          </p>
-        </motion.footer>
-      </motion.div>
+      </div>
+
+      {/* --- 4. BOTTOM MARQUEE --- */}
+      <InfiniteMarquee />
+      
     </section>
   );
 };

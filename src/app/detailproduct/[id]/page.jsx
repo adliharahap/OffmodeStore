@@ -1,75 +1,137 @@
-// Impor 'notFound' dari Next.js untuk menangani 404
-import { notFound } from "next/navigation";
-import DetailProduct from "./DetailProductPage";
-import HeaderUniversal from "../../../../components/HeaderUniversal";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import HeaderUniversal from "../../../../components/Header";
+// GANTI IMPORT DI BAWAH INI:
+import { getProductDataByIdServer } from "../../../../utils/fetchProductServer"; 
+import DetailProduct from "./DetailProductPage"; 
 
-// 2. DATA PRODUK DIPINDAHKAN KE LUAR KOMPONEN
-const productData = {
-  id: 1,
-  name: 'Kemeja Linen Oversized',
-  price: 450000,
-  originalPrice: 600000,
-  rating: 4.9,
-  sold: '1.2k',
-  description: 'Kemeja esensial yang ringan dan sejuk, dibuat dari 100% linen premium. Potongan oversized memberikan tampilan santai namun tetap elegan.', // Deskripsi singkat
-  images: [
-    { src: 'https://placehold.co/800x800/f0f0f0/333?text=Kemeja+Linen+Style+1', linkedColorName: null }, // index 0 (Umum)
-    { src: 'https://placehold.co/800x800/e8e8e8/333?text=Kemeja+Linen+Detail', linkedColorName: null }, // index 1 (Umum)
-    { src: 'https://placehold.co/800x800/e8e8e8/333?text=Kemeja+Linen+Detail', linkedColorName: null }, // index 1 (Umum)
-    { src: 'https://placehold.co/800x800/f5f5f5/333?text=Kemeja+Putih', linkedColorName: 'Putih Gading' }, // index 2 (Warna)
-    { src: 'https://placehold.co/800x800/000080/eee?text=Kemeja+Navy', linkedColorName: 'Biru Navy' },    // index 3 (Warna)
-    { src: 'https://placehold.co/800x800/000000/eee?text=Kemeja+Hitam', linkedColorName: 'Hitam' },        // index 4 (Warna)
-    { src: 'https://placehold.co/800x800/C3B091/333?text=Kemeja+Khaki', linkedColorName: 'Khaki' },        // index 5 (Warna)
-  ],
+export async function generateMetadata({ params }) {
+  const { id } = await params;
   
-  // DIPERBARUI: Index disesuaikan dengan array 'images' yang baru
-  colors: [
-    { name: 'Putih Gading', thumbnail: 'https://placehold.co/100x100/f5f5f5/333?text=Putih', mainImageIndex: 3 },
-    { name: 'Biru Navy', thumbnail: 'https://placehold.co/100x100/000080/eee?text=Navy', mainImageIndex: 4 },
-    { name: 'Hitam', thumbnail: 'https://placehold.co/100x100/000000/eee?text=Hitam', mainImageIndex: 5 },
-    { name: 'Khaki', thumbnail: 'https://placehold.co/100x100/C3B091/333?text=Khaki', mainImageIndex: 6 },
-  ],
-  
-  sizes: [
-    { name: 'S', stock: 0 }, // Stok Habis
-    { name: 'M', stock: 12 },
-    { name: 'L', stock: 30 },
-    { name: 'XL', stock: 5 },
-  ],
-  fullDescription: 'Kemeja esensial yang ringan dan sejuk, dibuat dari 100% linen premium. Potongan oversized memberikan tampilan santai namun tetap elegan. Sempurna untuk cuaca hangat, bisa dipakai sebagai atasan atau outer ringan. Didesain dengan kerah klasik, kancing depan penuh, dan satu saku di dada. Lengan panjang dengan manset berkancing yang bisa digulung untuk gaya yang lebih kasual. Bahan linen dikenal karena daya tahannya dan kemampuannya menyerap keringat, membuatnya ideal untuk iklim tropis.',
-  specifications: [
-    { name: 'Bahan', value: '100% Linen Premium' },
-    { name: 'Fit', value: 'Oversized' },
-    { name: 'Kerah', value: 'Klasik (Spread Collar)' },
-    { name: 'Saku', value: '1 Saku Dada' },
-    { name: 'Negara Asal', value: 'Indonesia' },
-    { name: 'Petunjuk Cuci', value: 'Mesin cuci suhu rendah, jangan gunakan pemutih, setrika suhu sedang.' },
-  ]
-};
+  // Fetch data produk di server
+  const product = await getProductDataByIdServer(id);
+
+  if (!product) {
+    return {
+      title: "Produk Tidak Ditemukan",
+    };
+  }
+
+  // Ambil gambar pertama
+  const imageUrl = product.product_images?.[0]?.image_url || 'https://placehold.co/600x600.png';
+
+  return {
+    title: product.name,
+    description: product.description || "Cek detail produk ini di OffMode Store!",
+    openGraph: {
+      title: product.name,
+      description: product.description,
+      // INI KUNCINYA: Masukkan URL gambar Supabase di sini
+      images: [
+        {
+          url: imageUrl, 
+          width: 800,
+          height: 600,
+          alt: product.name,
+        },
+      ],
+      type: 'website',
+    },
+  };
+}
 
 export default async function DetailProductPage({ params }) {
-    const { id } = await params;
+  // 1. Await params (Next.js 15)
+  const { id } = await params;
 
-    // Untuk data statis, kita cek ID-nya
-    // (Dalam aplikasi nyata, Anda akan fetch(.../api/products/${id}))
-    const product = productData;
+  // 2. Await headers
+  const headersList = await headers();
+  const isLoggedIn = headersList.get('x-is-logged-in') === 'true';
 
-    // Cek apakah ID produk dari data cocok dengan ID dari URL
-    if (String(product.id) !== String(id)) {
-        // Jika tidak, panggil 'notFound()' dari Next.js
-        // Ini akan otomatis merender file 'not-found.jsx' terdekat
-        notFound();
-    }
-    console.log("produk id :",product.id);
-    console.log("params id : ", String(id));
-    
-    
+  // 3. Validasi UUID
+  const isUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+  
+  if (!id || !isUuid(id)) {
+    redirect("/not-found");
+  }
 
-    // Jika produk ditemukan, render komponen UI dengan data produk
-    return (
-        <>
-        <HeaderUniversal />
-        <DetailProduct product={product} />
-        </>
-    );
+  // 4. FETCH DATA MENGGUNAKAN FUNGSI SERVER BARU
+  let data = null;
+  try {
+    // Panggil fungsi server yang baru kita buat
+    data = await getProductDataByIdServer(id);
+  } catch (error) {
+    console.error("Page Error:", error);
+  }
+
+  // 5. Redirect jika data null
+  if (!data) {
+    redirect("/not-found");
+  }
+
+  // 6. Format Data (Logic tetap sama)
+  const formattedProduct = {
+    id: data.id,
+    name: data.name,
+    price: data.product_variants?.[0]?.price ?? 0,
+    originalPrice: data.product_variants?.[0]?.original_price ?? 0,
+    rating: data.rating ?? null,
+    sold: data.sold_count_total ?? 0,
+    description: data.description ?? "",
+    fullDescription: data.full_description ?? "",
+    variants: data.product_variants ?? [],
+
+    images: data.product_images?.map((img) => ({
+        src: img?.image_url ?? "",
+        linkedColorName: img?.linked_color_name ?? null,
+    })) ?? [],
+
+    colors: [
+      ...new Map(
+        (data.product_images ?? [])
+          .filter((img) => img?.linked_color_name)
+          .map((img) => [
+            img.linked_color_name,
+            {
+              name: img.linked_color_name,
+              thumbnail: img.image_url,
+              mainImageIndex: (data.product_images ?? []).indexOf(img),
+            },
+          ])
+      ).values(),
+    ],
+
+    sizes: (() => {
+      const variants = data.product_variants ?? [];
+      const sizeNames = [...new Set(variants.map((v) => v?.size_name))];
+      return sizeNames.map((size) => ({
+        name: size,
+        stock: variants
+          .filter((v) => v?.size_name === size)
+          .reduce((acc, v) => acc + (v?.stock ?? 0), 0),
+      }));
+    })(),
+
+    specifications: data.product_specifications?.map((spec) => ({
+        name: spec?.spec_name ?? "",
+        value: spec?.spec_value ?? "",
+    })) ?? [],
+    reviews: data.product_reviews?.map((review) => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        date: review.created_at,
+        user: {
+            name: review.profiles?.full_name || 'Anonim',
+            avatar: review.profiles?.avatar_url || 'https://placehold.co/100x100?text=U'
+        }
+    })) || [] // Default array kosong jika tidak ada review
+  };
+
+  return (
+    <>
+      <HeaderUniversal />
+      <DetailProduct product={formattedProduct} isLoggedIn={isLoggedIn} />
+    </>
+  );
 }

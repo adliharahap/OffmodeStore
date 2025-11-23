@@ -34,8 +34,218 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/* Firefox */
-input[type="number"] {
-  -moz-appearance: textfield;
+/* ===========================================
+   Wrapper Dashboard Admin
+   Semua styling hanya aktif di halaman dashboard
+   =========================================== */
+.dashboard-admin input,
+.dashboard-admin textarea,
+.dashboard-admin select {
+  color: black;
+  background-color: white;
+}
+
+/* Fokus input/textarea/select */
+.dashboard-admin input:focus,
+.dashboard-admin textarea:focus,
+.dashboard-admin select:focus {
+  border-color: #6b7280; /* abu gelap */
+}
+
+/* Placeholder (input & textarea) */
+.dashboard-admin input::placeholder,
+.dashboard-admin textarea::placeholder {
+  color: gray;
+}
+
+/* ===========================================
+   Styling dropdown option
+   =========================================== */
+.dashboard-admin option {
+  color: black;
+  background-color: white;
+}
+
+
+/* untuk halaman 404 */
+/* --- STYLING KHUSUS HALAMAN NOT FOUND (404) --- */
+
+.not-found-page {
+  min-height: 100vh;
+  background-color: #0a0a0a; /* Dark Background */
+  color: white;
+  font-family: var(--font-poppins), sans-serif; /* Menggunakan font dari layout */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background Noise & Blobs */
+.nf-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+
+.nf-blob {
+  position: absolute;
+  width: 50vw;
+  height: 50vw;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: 0;
+  opacity: 0.4;
+}
+
+.nf-blob-top {
+  top: -20%;
+  left: -10%;
+  background: rgba(147, 51, 234, 0.3); /* Purple */
+}
+
+.nf-blob-bottom {
+  bottom: -20%;
+  right: -10%;
+  background: rgba(79, 70, 229, 0.3); /* Indigo */
+}
+
+/* Navigation */
+.nf-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 50;
+}
+
+.nf-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.025em;
+  color: white;
+  text-decoration: none;
+}
+
+.nf-link-home {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.nf-link-home:hover {
+  color: #9333ea; /* Purple-600 */
+}
+
+/* Main Content */
+.nf-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  margin-top: 4rem;
+}
+
+.nf-content {
+  max-width: 28rem;
+}
+
+/* 404 Title Styles */
+.nf-title-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+  user-select: none;
+}
+
+.nf-title {
+  font-size: 120px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(to bottom, #ffffff, #4b5563);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Responsive Font Size */
+@media (min-width: 768px) {
+  .nf-title {
+    font-size: 180px;
+  }
+}
+
+.nf-subtitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.nf-desc {
+  font-size: 1.125rem;
+  color: #9ca3af; /* Gray-400 */
+  line-height: 1.75;
+  margin-bottom: 2rem;
+}
+
+/* Button */
+.nf-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 2rem;
+  background-color: white;
+  color: black;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.1);
+}
+
+.nf-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.2);
+}
+
+.nf-button:active {
+  transform: scale(0.95);
+}
+
+/* Footer */
+.nf-footer {
+  padding: 1.5rem 0;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 10;
+}
+
+.nf-footer p {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
