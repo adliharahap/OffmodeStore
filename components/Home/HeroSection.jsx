@@ -222,7 +222,7 @@ const HeroSection = () => {
 
             {/* Dekorasi Circle Text di belakang (Adaptive Fill) */}
             <motion.div 
-              className="absolute top-10 right-10 lg:right-20 w-32 h-32 z-0 opacity-30"
+              className="absolute top-0 md:top-10 right-10 lg:right-20 w-32 h-32 z-0 opacity-30"
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
             >

@@ -25,13 +25,13 @@ export default function AuthListener() {
     isFetching.current = true;
 
     try {
-      console.log("🔄 AuthListener: Syncing data...");
+      // console.log("🔄 AuthListener: Syncing data...");
 
       // 1. Cek Session ke Server Supabase (Wajib pakai getUser biar fresh)
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error || !user) {
-        console.log("AuthListener: No active session / Token expired.");
+        // console.log("AuthListener: No active session / Token expired.");
         dispatch(clearAuth());
         dispatch(setCartCount(0));
         return;
@@ -65,7 +65,7 @@ export default function AuthListener() {
       const count = await getCartCount();
       dispatch(setCartCount(count));
 
-      console.log("✅ AuthListener: Data Synced. Role:", mergedUser.role);
+      // console.log("✅ AuthListener: Data Synced. Role:", mergedUser.role);
 
     } catch (err) {
       console.error("AuthListener Critical Error:", err);

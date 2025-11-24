@@ -286,6 +286,7 @@ const Profile = () => {
 
                                         {/* Add New Card (Dashed) */}
                                         <motion.button
+                                            onClick={handleAddAddress}
                                             variants={itemVariants}
                                             className="min-h-[200px] border-2 border-dashed border-gray-300 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all group"
                                         >
@@ -299,7 +300,9 @@ const Profile = () => {
                             </motion.div>
 
                             {/* Mobile Add Button (Floating) */}
-                            <button className="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-purple-600 text-white rounded-full shadow-2xl flex items-center justify-center z-40">
+                            <button 
+                                onClick={handleAddAddress}
+                                className="sm:hidden fixed bottom-14 right-6 w-14 h-14 bg-purple-600 dark:bg-stone-700 text-white rounded-full shadow-2xl flex items-center justify-center z-40">
                                 <Plus size={28} />
                             </button>
 

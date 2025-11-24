@@ -57,8 +57,8 @@ export async function proxy(req) {
   // --- ATURAN #1: Halaman /login ---
   if (pathname === '/login') {
     if (user) {
-      // Jika SUDAH login, tendang ke not-found
-      return NextResponse.redirect(notFoundUrl)
+      // Jika SUDAH login, tendang ke halaman utama
+      return NextResponse.redirect(new URL('/', req.url))
     }
     // Jika BELUM login, biarkan tampilkan halaman /login
     return res
@@ -72,6 +72,13 @@ export async function proxy(req) {
   }
 
   if (pathname === '/mycart') {
+    if (!user) {
+      return NextResponse.redirect(notFoundUrl)
+    }
+    return res
+  }
+
+  if (pathname === '/profile') {
     if (!user) {
       return NextResponse.redirect(notFoundUrl)
     }
@@ -129,5 +136,6 @@ export const config = {
     '/myorders/:path*',
     '/mycart/:path*',
     '/checkout/:path*',
+    '/profile/:path*',
   ],
 }

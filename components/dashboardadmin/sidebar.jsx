@@ -147,7 +147,7 @@ function MobileSidebar({ isOpen, onClose, user, navLinks, onLogoutClick }) {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 20, stiffness: 150 }}
-            className="fixed top-0 left-0 bottom-0 w-64 bg-gray-900 text-gray-200 p-4 flex flex-col justify-between z-50 md:hidden overflow-y-auto"
+            className="fixed top-0 left-0 bottom-0 w-64 bg-gray-950 text-gray-200 p-4 flex flex-col justify-between z-50 md:hidden overflow-y-auto"
             role="dialog"
             aria-modal="true"
           >
@@ -217,7 +217,7 @@ function DesktopSidebar({ isExpanded, setIsExpanded, user, navLinks, onLogoutCli
       animate={isExpanded ? "expanded" : "collapsed"}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
-      className="hidden md:flex h-screen bg-gray-900 dark:bg-black text-gray-200 p-4 flex-col justify-between shadow-lg overflow-hidden"
+      className="hidden md:flex h-screen bg-gray-950 dark:bg-black text-gray-200 p-4 flex-col justify-between shadow-lg overflow-hidden"
     >
       {/* Bagian Atas: Logo dan Navigasi */}
       <div>
