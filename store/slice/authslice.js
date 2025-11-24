@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   user: null,
   isLoading: true, 
+  refreshSignal: 0,
 };
 
 const authSlice = createSlice({
@@ -17,6 +18,9 @@ const authSlice = createSlice({
     clearAuth: (state) => {
       state.user = null;
       state.isLoading = false; // Stop loading karena sudah pasti logout
+    },
+    triggerAuthRefresh: (state) => {
+      state.refreshSignal = Date.now(); // Update dengan timestamp sekarang
     }
   },
 });

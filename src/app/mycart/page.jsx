@@ -15,8 +15,8 @@ import {
   updateCartQuantityAction,
   deleteCartItemAction
 } from '../../../utils/cartActions';
-import HeaderUniversal from '../../../components/Header';
 import { useRouter } from 'next/navigation';
+import Header from '../../../components/Header';
 
 
 // --- FORMAT HARGA ---
@@ -151,7 +151,7 @@ const CartPage = () => {
   const grandTotal = subtotal;
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white transition-colors duration-500 font-sans">
-      <HeaderUniversal />
+      <Header />
 
       {/* Background Noise Texture */}
       <div

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue, useMotionTemplate } from "framer-motion";
 import { ArrowRight, Star, Play, MoveRight } from "lucide-react";
 import Link from "next/link";
+import { VideoModal } from "./VideoModal";
 
 // --- 1. KOMPONEN PENDUKUNG ---
 
@@ -110,6 +111,11 @@ const revealImage = {
 
 // --- 3. MAIN COMPONENT ---
 const HeroSection = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // URL Video dipindah ke Parent agar bisa dinamis jika nanti ada banyak video
+  const CAMPAIGN_VIDEO_URL = "/brand.mp4";
+
   const mainImage = "https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=2073&auto=format&fit=crop"; 
   const secondaryImage = "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1000&auto=format&fit=crop";
 
@@ -165,7 +171,7 @@ const HeroSection = () => {
               <div className="absolute inset-0 bg-white/10 dark:bg-purple-50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 z-0" />
             </Link>
             
-            <button className="flex items-center gap-3 px-6 py-4 text-gray-600 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors group">
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-3 px-6 py-4 text-gray-600 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors group">
                <div className="w-10 h-10 rounded-full border border-gray-300 dark:border-white/20 flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-white/10 transition-all">
                  <Play size={14} className="fill-gray-900 dark:fill-white ml-1" />
                </div>
@@ -236,6 +242,12 @@ const HeroSection = () => {
 
       {/* --- 4. BOTTOM MARQUEE --- */}
       <InfiniteMarquee />
+
+      <VideoModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        videoUrl={CAMPAIGN_VIDEO_URL}
+      />
       
     </section>
   );

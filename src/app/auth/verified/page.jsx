@@ -3,12 +3,12 @@
 import { motion } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import HeaderUniversal from '../../../../components/Header';
+import Header from '../../../../components/Header';
 
 export default function VerifiedPage() {
   return (
     <>
-      <HeaderUniversal />
+      <Header />
       <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-gray-900 py-20 px-4">
         <motion.div
           className="w-full max-w-md p-8 md:p-12 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl text-center"
@@ -32,13 +32,13 @@ export default function VerifiedPage() {
             Akun Anda telah berhasil diverifikasi. Anda sekarang dapat masuk ke akun Anda.
           </p>
           
-          <Link href="/login" passHref>
+          <Link href="/" passHref>
             <motion.div
               className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-purple-600 dark:bg-purple-500 cursor-pointer"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
             >
-              Kembali ke Halaman Login
+              Kembali ke Halaman Utama
             </motion.div>
           </Link>
         </motion.div>

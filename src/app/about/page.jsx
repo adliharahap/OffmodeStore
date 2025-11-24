@@ -147,62 +147,90 @@ const TeamCard = ({ member }) => {
 
   return (
     <motion.div
-      variants={itemVariants}
+      // variants={itemVariants} // Pastikan variants dipassing dari parent atau didefinisikan
       className="group relative flex flex-col gap-4"
     >
-      {/* Image Container */}
+      {/* --- IMAGE CONTAINER --- */}
       <div className="relative aspect-3/4 overflow-hidden rounded-xl bg-gray-200 dark:bg-[#1a1a1a]">
         <img
           src={member.img}
           alt={member.name}
-          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105 "
+          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
         />
 
-        {/* Overlay Gradient on Hover */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        {/* Overlay Gradient (Hanya Desktop) */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden lg:block"></div>
 
-        {/* Social Icons (Slide Up on Hover) */}
-        <div className="absolute -bottom-4 left-0 right-0 flex justify-center gap-3 translate-y-full group-hover:-translate-y-7 transition-transform duration-300">
-          <a
-            href={`https://instagram.com/${cleanIg}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-pink-600 transition-colors"
-            title="Instagram"
-          >
-            <Instagram size={18} />
-          </a>
-
-          {/* WhatsApp (Pengganti LinkedIn) */}
-          <a
-            href={`https://wa.me/${member.phone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-green-600 transition-colors"
-            title="WhatsApp"
-          >
-            <WhatsappIcon size={18} />
-          </a>
-
-          {/* Email */}
-          <a
-            href={`mailto:${member.email}`}
-            className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-blue-600 transition-colors"
-            title="Email"
-          >
-            <Mail size={18} />
-          </a>
+        {/* Social Icons - Desktop Only (Hover Slide Up) */}
+        <div className="hidden lg:flex absolute -bottom-4 left-0 right-0 justify-center gap-3 translate-y-full group-hover:-translate-y-7 transition-transform duration-300">
+          <SocialButton href={`https://instagram.com/${cleanIg}`} color="pink" icon={<Instagram size={18} />} />
+          <SocialButton href={`https://wa.me/${member.phone}`} color="green" icon={<WhatsappIcon size={18} />} />
+          <SocialButton href={`mailto:${member.email}`} color="blue" icon={<Mail size={18} />} />
         </div>
       </div>
 
-      {/* Info */}
-      <div className="text-center">
-        <h3 className="text-lg font-serif font-bold text-gray-900 dark:text-white">{member.name}</h3>
-        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-widest mt-1">{member.role}</p>
+      {/* --- INFO SECTION --- */}
+      <div className="text-center flex flex-col gap-1">
+        <h3 className="text-lg font-serif font-bold text-gray-900 dark:text-white">
+          {member.name}
+        </h3>
+        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-widest">
+          {member.role}
+        </p>
+
+        {/* --- MOBILE/TABLET SOCIAL LINKS (New) --- */}
+        {/* Muncul hanya di layar < 1024px (Mobile & Tablet) */}
+        <div className="flex lg:hidden justify-center gap-4 mt-3 items-center">
+           {/* Instagram Mobile */}
+           <a 
+            href={`https://instagram.com/${cleanIg}`}
+            className="text-gray-500 hover:text-pink-600 transition-colors dark:text-gray-400 dark:hover:text-pink-400"
+           >
+             <Instagram size={20} />
+           </a>
+
+           {/* WA Mobile */}
+           <a 
+            href={`https://wa.me/${member.phone}`}
+            className="text-gray-500 hover:text-green-600 transition-colors dark:text-gray-400 dark:hover:text-green-400"
+           >
+             <WhatsappIcon size={20} />
+           </a>
+
+           {/* Email Mobile */}
+           <a 
+            href={`mailto:${member.email}`}
+            className="text-gray-500 hover:text-blue-600 transition-colors dark:text-gray-400 dark:hover:text-blue-400"
+           >
+             <Mail size={20} />
+           </a>
+        </div>
       </div>
     </motion.div>
   );
 };
+
+// Helper Component untuk Desktop Button agar code lebih rapi
+const SocialButton = ({ href, color, icon }) => {
+  // Mapping warna hover tailwind dinamis
+  const hoverColors = {
+    pink: 'hover:text-pink-600',
+    green: 'hover:text-green-600',
+    blue: 'hover:text-blue-600',
+  };
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white ${hoverColors[color]} transition-colors`}
+    >
+      {icon}
+    </a>
+  );
+};
+
 
 // --- KOMPONEN INPUT FORMULIR (MINIMALIST) ---
 const FormInput = ({ id, label, type = 'text', placeholder }) => (
@@ -302,13 +330,13 @@ const AboutUs = () => {
                     <div className="p-3 bg-gray-100 dark:bg-white/5 rounded-lg text-gray-900 dark:text-white"><MessageCircle size={20} /></div>
                     <div>
                       <h4 className="font-bold text-gray-900 dark:text-white">Contact</h4>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">+62 812 3456 7890</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">+62 852 7543 7848</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Styled Map Container */}
-                <div className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 filter grayscale hover:grayscale-0 transition-all duration-500">
+                <div className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 filter transition-all duration-500">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.570073289037!2d106.8249641750012!3d-6.188233893800609!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f432b04b934d%3A0xe5f2796e6a1006e8!2sMonumen%20Nasional!5e0!3m2!1sid!2sid!4v1731131494883!5m2!1sid!2sid"
                     width="100%"

@@ -34,6 +34,7 @@ const FeaturedProducts = () => {
       try {
         const data = await getFeaturedProducts();
         setProducts(data);
+        
       } catch (error) {
         console.error("Failed to load featured products", error);
       } finally {
@@ -77,10 +78,10 @@ const FeaturedProducts = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <a href="#" className="group flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-black dark:text-white/70 dark:hover:text-white transition-colors border-b border-transparent hover:border-black dark:hover:border-white pb-1">
+            <Link href="/products" className="group flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-black dark:text-white/70 dark:hover:text-white transition-colors border-b border-transparent hover:border-black dark:hover:border-white pb-1">
               View All Products 
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
-            </a>
+            </Link>
           </motion.div>
         </div>
 
@@ -107,9 +108,9 @@ const FeaturedProducts = () => {
                   variants={itemVariants}
                   className="h-full"
                 >
-                  <div className="h-full transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
+                  <Link href={`/detailproduct/${product.id}`} className="h-full bg-red-500 transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
                       <ProductCard product={product} />
-                  </div>
+                  </Link>
                 </motion.div>
               ))
             ) : (

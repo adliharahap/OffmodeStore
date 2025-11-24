@@ -3,64 +3,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-    User, Mail, Phone, MapPin, Building, Sun, Moon, ShoppingBag, 
+    User, Mail, Phone, MapPin, Building, Sun, Moon, ShoppingBag,
     Menu, X, Edit2, Plus, Check, LogOut, Camera,
     Home,
     History
 } from 'lucide-react';
-import HeaderUniversal from '../../../components/Header';
 import { EditProfileModal } from './_components/EditProfileModal';
-import { getUserProfile } from '../../../utils/profileActions';
-import { getUserAddresses } from '../../../utils/addressAction';
-import { useSelector } from 'react-redux';
+import { deleteAddressAction, getUserAddresses } from '../../../utils/addressAction';
+import { useDispatch, useSelector } from 'react-redux';
 import Footer from '../../../components/Footer';
-
-// --- Data Tiruan (Mock Data) berdasarkan skema database ---
-
-const mockProfile = {
-    id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    full_name: 'Daffa Rafiq',
-    phone_number: '0812-3456-7890',
-    role: 'customer',
-    email: 'daffa.rafiq@example.com',
-    created_at: '2023-10-26T10:00:00Z',
-    profile_picture_url: 'https://placehold.co/150x150/10b981/ffffff?text=DR',
-};
-
-const mockAddresses = [
-    {
-        id: 'a1b2c3d4-e5f6-7890-abcd-ef0123456789',
-        address_label: 'Rumah Utama',
-        recipient_name: 'Daffa Rafiq',
-        phone_number: '0812-3456-7890',
-        street: 'Jl. Merdeka No. 45',
-        city: 'Bandung',
-        province: 'Jawa Barat',
-        postal_code: '40111',
-        is_default: true,
-    },
-    {
-        id: 'b1c2d3e4-f5g6-7890-bcde-fg0123456789',
-        address_label: 'Kantor Pusat',
-        recipient_name: 'Admin Daffa',
-        phone_number: '0856-7890-1234',
-        street: 'Gedung Digital Lt. 10, Jl. Sudirman',
-        city: 'Jakarta Selatan',
-        province: 'DKI Jakarta',
-        postal_code: '12190',
-        is_default: false,
-    },
-];
+import Header from '../../../components/Header';
+import { openLogoutModal } from '../../../store/slice/uiSlice';
+import { AddressModal } from './_components/AddressModal';
 
 // --- ANIMASI ---
 const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
 };
 
 
@@ -80,7 +44,7 @@ const InfoRow = ({ icon: Icon, label, value }) => (
     </div>
 );
 
-const AddressCard = ({ address }) => (
+const AddressCard = ({ address, onEdit, onDelete }) => (
     <Card
         className="p-5 bg-white dark:bg-[#111] border font-serif border-gray-200 dark:border-white/10 rounded-2xl hover:border-purple-300 dark:hover:border-white/30 transition-all duration-300 hover:shadow-lg"
         initial={{ scale: 0.95, opacity: 0 }}
@@ -115,10 +79,16 @@ const AddressCard = ({ address }) => (
         </div>
 
         <div className="mt-4 flex space-x-3">
-            <button className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+            <button
+                onClick={() => onEdit(address)}
+                className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
                 Ubah
             </button>
-            <button className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline">
+            <button
+                onClick={() => onDelete(address.id)}
+                className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+            >
                 Hapus
             </button>
         </div>
@@ -131,8 +101,14 @@ const Profile = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [addresses, setAddresses] = useState([]);
     const [isAddressLoading, setIsAddressLoading] = useState(true);
+
+    // State untuk Address Modal
+    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+    const [editingAddress, setEditingAddress] = useState(null); // Data alamat yg mau diedit
+
     const userProfile = useSelector((state) => state.auth.user);
     const isAuthLoading = useSelector((state) => state.auth.isLoading);
+    const dispatch = useDispatch();
 
     const fetchAddresses = async () => {
         setIsAddressLoading(true);
@@ -153,6 +129,30 @@ const Profile = () => {
             fetchAddresses();
         }
     }, [userProfile]);
+
+    // Handler: Hapus Alamat
+    const handleDeleteAddress = async (addressId) => {
+        if (confirm("Yakin ingin menghapus alamat ini?")) {
+            const res = await deleteAddressAction(addressId);
+            if (res.success) {
+                fetchAddresses(); // Refresh
+            } else {
+                alert("Gagal hapus: " + res.message);
+            }
+        }
+    };
+
+    // Handler: Buka Modal Tambah
+    const handleAddAddress = () => {
+        setEditingAddress(null); // Mode Tambah
+        setIsAddressModalOpen(true);
+    };
+
+    // Handler: Buka Modal Edit
+    const handleEditAddress = (address) => {
+        setEditingAddress(address); // Mode Edit
+        setIsAddressModalOpen(true);
+    };
 
     if (isAuthLoading) {
         return (
@@ -182,16 +182,15 @@ const Profile = () => {
 
     return (
         <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] transition-colors duration-500 font-sans">
-            <HeaderUniversal />
-
+            <Header />
             {/* Background Noise */}
-            <div className="inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 fixed mix-blend-multiply dark:mix-blend-normal" 
-                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>
+            <div className="inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 fixed mix-blend-multiply dark:mix-blend-normal"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>
             </div>
 
             <main className="relative z-10 pt-32 pb-20">
                 <div className="container mx-auto px-6 md:px-10 max-w-7xl">
-                    
+
                     {/* Header Title */}
                     <div className="mb-10">
                         <span className="text-purple-600 dark:text-purple-400 font-bold tracking-[0.2em] text-xs uppercase mb-2 block">Account Settings</span>
@@ -200,10 +199,10 @@ const Profile = () => {
 
                     {/* SPLIT LAYOUT */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                        
+
                         {/* --- LEFT: STICKY PROFILE CARD --- */}
                         <div className="lg:col-span-4 lg:sticky lg:top-32">
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
                                 className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-2xl shadow-gray-200/50 dark:shadow-none overflow-hidden relative"
                             >
@@ -214,8 +213,8 @@ const Profile = () => {
                                     {/* Avatar */}
                                     <div className="relative mb-6 group cursor-pointer">
                                         <div className="w-32 h-32 rounded-full p-1 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 shadow-xl">
-                                            <img 
-                                                src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${userProfile?.email || 'User'}&background=random&color=ffffff`}
+                                            <img
+                                                src={userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${userProfile?.full_name || 'User'}&background=random&color=ffffff`}
                                                 alt={userProfile.full_name}
                                                 className="w-full h-full rounded-full object-cover"
                                             />
@@ -235,13 +234,13 @@ const Profile = () => {
                                         <InfoRow icon={History} label="Member Since" value={dateCreated} />
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={() => setIsModalOpen(true)}
                                         className="w-full py-3 rounded-xl border border-gray-200 dark:border-white/20 font-bold text-gray-900 dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all flex items-center justify-center gap-2 mb-3"
                                     >
                                         <Edit2 size={16} /> Edit Profile
                                     </button>
-                                    <button className="w-full py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
+                                    <button onClick={() => dispatch(openLogoutModal())} className="w-full py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
                                         <LogOut size={16} /> Sign Out
                                     </button>
                                 </div>
@@ -250,20 +249,20 @@ const Profile = () => {
 
                         {/* --- RIGHT: ADDRESS BOOK & CONTENT --- */}
                         <div className="lg:col-span-8">
-                            
+
                             {/* Section Header */}
                             <div className="flex justify-between items-end mb-8 pb-4 border-b border-gray-200 dark:border-white/10">
                                 <div>
                                     <h3 className="text-xl font-serif font-bold text-gray-900 dark:text-white">Address Book</h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your shipping destinations.</p>
                                 </div>
-                                <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-black rounded-lg font-bold text-sm hover:opacity-90 transition-opacity">
+                                <button onClick={handleAddAddress} className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-black rounded-lg font-bold text-sm hover:opacity-90 transition-opacity">
                                     <Plus size={16} /> Add New
                                 </button>
                             </div>
 
                             {/* Address Grid */}
-                            <motion.div 
+                            <motion.div
                                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
                                 variants={containerVariants}
                                 initial="hidden"
@@ -277,11 +276,16 @@ const Profile = () => {
                                 ) : (
                                     <>
                                         {addresses.map((addr) => (
-                                            <AddressCard key={addr.id} address={addr} />
+                                            <AddressCard
+                                                key={addr.id}
+                                                address={addr}
+                                                onEdit={handleEditAddress}     // Pass handler edit
+                                                onDelete={handleDeleteAddress} // Pass handler delete
+                                            />
                                         ))}
-                                        
+
                                         {/* Add New Card (Dashed) */}
-                                        <motion.button 
+                                        <motion.button
                                             variants={itemVariants}
                                             className="min-h-[200px] border-2 border-dashed border-gray-300 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center text-gray-400 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all group"
                                         >
@@ -305,11 +309,19 @@ const Profile = () => {
             </main>
 
             <Footer />
-            
-            <EditProfileModal 
-                isVisible={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                profile={userProfile} 
+
+            <EditProfileModal
+                isVisible={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                profile={userProfile}
+            />
+
+            {/* MODAL ALAMAT (Baru) */}
+            <AddressModal
+                isVisible={isAddressModalOpen}
+                onClose={() => setIsAddressModalOpen(false)}
+                addressToEdit={editingAddress} // Kirim data alamat jika edit
+                onSaveSuccess={fetchAddresses} // Refresh list alamat setelah simpan
             />
         </div>
     );

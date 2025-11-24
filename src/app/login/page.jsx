@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, Sparkles, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import HeaderUniversal from '../../../components/Header';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 import Footer from '../../../components/Footer';
+import Header from '../../../components/Header';
 
 // --- VARIAN ANIMASI ---
 const containerVariants = {
@@ -153,7 +153,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white font-sans transition-colors duration-500 flex flex-col">
-      <HeaderUniversal />
+      <Header />
 
       {/* Background Noise */}
       <div className=" inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 fixed mix-blend-multiply dark:mix-blend-normal" 

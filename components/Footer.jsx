@@ -8,9 +8,9 @@ import { navLinks } from '../data/HeaderHref';
 const Footer = () => {
 
   const socialIcons = [
-    { icon: <Instagram size={20} />, href: '#' },
-    { icon: <Twitter size={20} />, href: '#' },
-    { icon: <Facebook size={20} />, href: '#' },
+    { icon: <Instagram size={20} />, href: 'https://instagram.com' },
+    { icon: <Twitter size={20} />, href: 'https://x.com' },
+    { icon: <Facebook size={20} />, href: 'https://facebook.com' },
   ];
 
   return (
@@ -21,8 +21,8 @@ const Footer = () => {
           <div>
             <h3 className="text-2xl font-bold text-white mb-4">offmodestore</h3>
             <p className="mb-2">Exclusive Branded Fashion, Elegantly Yours.</p>
-            <p className="text-sm">Email: contact@offmodestore.com</p>
-            <p className="text-sm">WA: +62 123 4567 890</p>
+            <p className="text-sm">Email: callmeyuyun6@gmail.com</p>
+            <p className="text-sm">WA: +62 852 7543 7848</p>
           </div>
 
           {/* Kolom 2: Navigasi Cepat */}

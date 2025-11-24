@@ -1,11 +1,11 @@
 "use client";
 
-import HeaderUniversal from "../../../../components/Header";
+import Header from "../../../../components/Header";
 
 export default function Loading() {
   return (
     <>
-      <HeaderUniversal />
+      <Header />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 md:py-20 mt-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

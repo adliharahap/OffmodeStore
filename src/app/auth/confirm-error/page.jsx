@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XCircle, Mail, Send } from 'lucide-react';
-import HeaderUniversal from '../../../../components/Header';
 import { supabase } from '../../../../lib/supabaseClient';
+import Header from '../../../../components/Header';
 
 export default function ConfirmErrorPage() {
   const [email, setEmail] = useState("");
@@ -47,7 +47,7 @@ export default function ConfirmErrorPage() {
 
   return (
     <>
-      <HeaderUniversal />
+      <Header />
       <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-gray-900 py-20 px-4">
         <motion.div
           className="w-full max-w-md p-8 md:p-12 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl text-center"

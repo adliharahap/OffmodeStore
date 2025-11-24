@@ -11,6 +11,7 @@ import createWebStorage from "redux-persist/lib/storage/createWebStorage";
 
 import authReducer from "./slice/authslice";
 import cartReducer from "./slice/cartSlice";
+import uiReducer from "./slice/uiSlice";
 
 // --- START: FIX STORAGE UNTUK NEXT.JS ---
 const createNoopStorage = () => {
@@ -36,6 +37,7 @@ const storage = typeof window !== "undefined"
 const rootReducer = combineReducers({
   auth: authReducer,
   cart: cartReducer,
+  ui: uiReducer,
 });
 
 const persistConfig = {

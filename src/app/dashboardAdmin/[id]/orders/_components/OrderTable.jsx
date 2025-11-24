@@ -49,6 +49,58 @@ export default function OrderTable({ orders, onUpdateStatus, onOpenDetail }) {
         setLoadingId(null);
     };
 
+    // 1. HELPER: FORMAT NOMOR HP (08 -> 628)
+    const formatPhoneNumber = (phone) => {
+        if (!phone) return '';
+        // Hapus spasi atau karakter non-digit
+        let cleanPhone = phone.replace(/\D/g, '');
+
+        // Jika diawali 08, ganti 0 dengan 62
+        if (cleanPhone.startsWith('08')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        }
+        // Jika diawali 8, tambahkan 62
+        else if (cleanPhone.startsWith('8')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+
+        return cleanPhone;
+    };
+
+    // 2. HELPER: GENERATE PESAN WA (TEMPLATE PROFESIONAL + GAMBAR)
+    const generateWaLink = (order) => {
+        const phone = formatPhoneNumber(order.phone);
+        if (!phone) return '#';
+
+        // Ambil data item pertama
+        const firstItem = order.items?.[0];
+        const firstItemName = firstItem?.name || 'Pesanan Anda';
+
+        // Ambil URL Gambar (Pastikan tidak null/undefined)
+        const imageUrl = firstItem?.image_url || '';
+
+        // Hitung sisa item
+        const totalItems = order.itemsCount || 0;
+        const otherItemsCount = totalItems > 1 ? `dan ${totalItems - 1} barang lainnya` : '';
+
+        // Template Pesan
+        const message = `
+Halo Kak ${order.customer},
+
+Kami dari *OffMode Store*.
+Terkait pesanan Kakak dengan ID: *#${order.id.substring(0, 8)}*
+
+Detail: ${firstItemName} ${otherItemsCount}
+Lihat Produk: ${imageUrl}
+
+[Tulis Info/Kendala Disini]
+
+Mohon konfirmasinya ya Kak. Terima kasih 🙏
+  `.trim();
+
+        return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    };
+
     return (
         <div className="bg-white rounded-2xl shadow-xl overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -79,6 +131,9 @@ export default function OrderTable({ orders, onUpdateStatus, onOpenDetail }) {
                         {orders.map((order) => {
                             const statusDetail = getStatusDetails(order.status);
                             const isLoading = loadingId === order.id;
+
+                            // Generate Link WA untuk order ini
+                            const waLink = generateWaLink(order);
 
                             return (
                                 <motion.tr
@@ -126,15 +181,21 @@ export default function OrderTable({ orders, onUpdateStatus, onOpenDetail }) {
                                         >
                                             <ExternalLink className="w-3 h-3" /> Lihat Detail
                                         </motion.button>
-                                        <a
-                                            href={`https://wa.me/${order.phone}?text=Halo%20${order.customer},%20kami%20ingin%20mengkonfirmasi%20pesanan%20${order.id}.%20Apakah%20sudah%20sesuai?`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 transition hover:underline"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Smartphone className="w-3 h-3" /> Chat Customer
-                                        </a>
+                                        {order.phone ? (
+                                            <a
+                                                href={waLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 transition hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+
+                                                <Smartphone className="w-3 h-3" /> Chat Customer
+
+                                            </a>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">No HP tidak ada</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                                         {["paid", "shipped"].includes(order.status) && (
@@ -174,10 +235,22 @@ ${order.status === "paid"
                                                 Lihat Detail
                                             </motion.button>
                                         )}
-                                        {order.status === "completed" && (
-                                            <div className="h-full w-full flex justify-center items-center gap-2">
-                                                <CheckCheck className="h-5 w-5 text-green-900" />
-                                                <p className="text-black">Selesai</p>
+                                        {order.status === "delivered" && (
+                                            <div className="flex items-center gap-3 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-xl w-full max-w-[200px]">
+                                                {/* Ikon Centang dalam Lingkaran */}
+                                                <div className="flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-green-800 rounded-full shrink-0 shadow-sm">
+                                                    <CheckCheck className="h-4 w-4 text-green-600 dark:text-green-300" />
+                                                </div>
+
+                                                {/* Teks Keterangan */}
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-green-700 dark:text-green-300">
+                                                        Selesai
+                                                    </span>
+                                                    <span className="text-[8px] font-medium text-green-600/80 dark:text-green-400/70 leading-tight">
+                                                        Diterima Customer
+                                                    </span>
+                                                </div>
                                             </div>
                                         )}
                                     </td>

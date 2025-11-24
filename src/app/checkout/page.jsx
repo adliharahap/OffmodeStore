@@ -8,7 +8,6 @@ import {
   User, Phone, Building, Home, Briefcase, Building2, Receipt, Calendar, Truck, Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import HeaderUniversal from '../../../components/Header';
 
 // ACTIONS (Mock / Actual Imports)
 import { getUserAddresses, addUserAddress } from '../../../utils/addressAction';
@@ -16,6 +15,7 @@ import { getCartCount, getCheckoutItemsAction, getDirectCheckoutItemAction } fro
 import { processCheckoutAction } from '../../../utils/checkoutAction';
 import { setCartCount } from '../../../store/slice/cartSlice';
 import { useDispatch } from 'react-redux';
+import Header from '../../../components/Header';
 
 // UTILS
 const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
@@ -270,7 +270,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 font-sans pb-24 md:pb-10">
-      <HeaderUniversal />
+      <Header />
 
       <div className="inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 fixed mix-blend-multiply dark:mix-blend-normal"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>

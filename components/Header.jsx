@@ -15,9 +15,8 @@ import { navLinks } from '../data/HeaderHref';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
-import { setUser } from '../store/slice/authslice';
-import { supabase } from '../lib/supabaseClient';
 import { performLogout } from '../utils/authHelper';
+import { openLogoutModal } from '../store/slice/uiSlice';
 
 // --- (Varian animasi Framer Motion) ---
 const backdropVariants = {
@@ -98,12 +97,6 @@ const Header = () => {
     };
   }, [profileRef]);
 
-  const handleLogout = async () => {
-    await performLogout(); // Ini akan hapus Supabase session + Redux + LocalStorage
-    window.location.href = '/login';
-    router.refresh();      // Refresh agar middleware server-side mendeteksi logout
-  };
-
   const menuItems = [
     { label: 'Akun Saya', href: '/profile', icon: User },
     { label: 'Pesanan Saya', href: '/myorders', icon: Package },
@@ -116,7 +109,7 @@ const Header = () => {
 
   const textClasses = 'text-gray-900 dark:text-white'; // Selalu adaptif (Hitam di Light, Putih di Dark)
   // Avatar URL helper
-  const getAvatarUrl = (u) => u?.avatar_url || `https://ui-avatars.com/api/?name=${u?.email || 'User'}&background=random&color=ffffff`;
+  const getAvatarUrl = (u) => u?.avatar_url || `https://ui-avatars.com/api/?name=${u?.full_name || 'User'}&background=random&color=ffffff`;
 
 
   const ThemeToggleButton = () => {
@@ -138,7 +131,7 @@ const Header = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${headerClasses}`}
+      className={`fixed top-0 left-0 right-0 z-9999 transition-all duration-500 ${headerClasses}`}
     >
       <div className="w-full px-6 md:px-10 relative flex justify-between items-center">
         {/* Logo (Kiri) - Font Serif untuk kesan Editorial */}
@@ -199,12 +192,12 @@ const Header = () => {
                 className="focus:outline-none ring-2 ring-transparent hover:ring-purple-200 rounded-full transition-all"
               >
                 <img
-                  src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.email || 'User'}&background=random&color=ffffff`}
+                  src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.full_name || 'User'}&background=random&color=ffffff`}
                   alt="Profile"
                   className="w-8 h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${user?.email || 'U'}&background=random&color=ffffff`;
+                    e.target.src = `https://ui-avatars.com/api/?name=${user?.full_name || 'U'}&background=random&color=ffffff`;
                   }}
                 />
               </motion.button>
@@ -258,7 +251,7 @@ const Header = () => {
                       )}
                     </div>
                     <div className="border-t border-gray-100 dark:border-white/5 p-2">
-                      <button onClick={handleLogout} className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-medium">
+                      <button onClick={() => dispatch(openLogoutModal())} className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-medium">
                         <LogOut size={18} /> Log Out
                       </button>
                     </div>
@@ -361,6 +354,20 @@ const Header = () => {
 
                   {user ? (
                     <div className="space-y-4">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={getAvatarUrl(user)}
+                          alt="Profile Dropdown"
+                          className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700 shadow-sm"
+                        />
+                        <div className="overflow-hidden">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Hello,</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate leading-tight" title={user.full_name}>
+                            {user.full_name}
+                          </p>
+                          <p className="text-xs text-gray-400 truncate" title={user.email}>{user.email}</p>
+                        </div>
+                      </div>
                       <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
                         <motion.div variants={navItemVariants} className="flex items-center gap-4 text-gray-700 dark:text-gray-300 p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg">
                           <User size={20} /> <span className="text-lg">Akun Saya</span>
@@ -382,7 +389,7 @@ const Header = () => {
                         variants={navItemVariants}
                         className="flex items-center gap-4 text-red-600 dark:text-red-400 p-2 w-full mt-4"
                         onClick={() => {
-                          handleLogout();
+                          dispatch(openLogoutModal());
                           setIsMobileMenuOpen(false);
                         }}
                       >

@@ -19,9 +19,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { completeOrderAction, getUserOrders } from '../../../utils/orderAction';
-import HeaderUniversal from '../../../components/Header';
 import Footer from '../../../components/Footer';
 import ReviewModal from './_components/ReviewModal';
+import Header from '../../../components/Header';
 
 
 const formatRupiah = (number) => {
@@ -407,7 +407,7 @@ export default function MyOrder() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white transition-colors duration-500 font-sans">
-      <HeaderUniversal />
+      <Header />
 
       {reviewData.orderItem && (
         <ReviewModal
@@ -427,13 +427,13 @@ export default function MyOrder() {
       <main className="relative z-10 pt-32 pb-20">
         <div className="container mx-auto">
 
-          <div className="mb-10">
+          <div className="mb-10 px-6 lg:px-0">
             <span className="text-purple-600 dark:text-purple-400 font-bold tracking-[0.2em] text-xs uppercase mb-2 block">My Account</span>
             <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 dark:text-white">Order History</h1>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar border-b border-gray-200 dark:border-white/10">
+          <div className="px-6 lg:px-0 flex gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar border-b border-gray-200 dark:border-white/10">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -449,7 +449,7 @@ export default function MyOrder() {
           </div>
 
           {/* Content */}
-          <div className="space-y-6 min-h-[400px]">
+          <div className="px-4 lg:px-0 space-y-6 min-h-[400px]">
             {loading ? (
               <>
                 <SkeletonCard />

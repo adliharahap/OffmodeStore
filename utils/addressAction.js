@@ -61,3 +61,60 @@ export async function addUserAddress(formData) {
   revalidatePath('/checkout');
   return { success: true };
 }
+
+export async function updateAddressAction(addressId, formData) {
+  const supabase = await createSupabaseServerActionClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, message: "Unauthorized" };
+
+  // Mapping data (sama seperti insert)
+  const addressData = {
+    address_label: formData.address_label,
+    recipient_name: formData.recipient_name,
+    phone_number: formData.phone, // Mapping 'phone' -> 'phone_number'
+    street: formData.street,
+    city: formData.city,
+    province: formData.province,
+    postal_code: formData.postal_code,
+    // is_default bisa ditambahkan logic khusus jika perlu
+  };
+
+  const { error } = await supabase
+    .from('user_addresses')
+    .update(addressData)
+    .eq('id', addressId)
+    .eq('user_id', user.id); // Pastikan hanya update milik sendiri
+
+  if (error) {
+    console.error("Error update address:", error.message);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath('/profile'); // Refresh halaman profile
+  revalidatePath('/checkout'); // Refresh halaman checkout jika user sedang disana
+  return { success: true };
+}
+
+// --- HAPUS ALAMAT ---
+export async function deleteAddressAction(addressId) {
+  const supabase = await createSupabaseServerActionClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, message: "Unauthorized" };
+
+  const { error } = await supabase
+    .from('user_addresses')
+    .delete()
+    .eq('id', addressId)
+    .eq('user_id', user.id); // Pastikan hanya hapus milik sendiri
+
+  if (error) {
+    console.error("Error delete address:", error.message);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath('/profile');
+  revalidatePath('/checkout');
+  return { success: true };
+}

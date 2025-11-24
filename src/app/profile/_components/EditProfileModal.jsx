@@ -125,13 +125,10 @@ export const EditProfileModal = ({ isVisible, onClose, profile, onSaveSuccess })
     }
   };
 
-  const inputClass = "w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 transition duration-200 outline-none";
-  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-
   return (
     <AnimatePresence>
       {isVisible && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-6">
           
           {/* Backdrop */}
           <motion.div

@@ -3,10 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, ChevronLeft, ChevronRight, Eye, Sparkles, ShoppingBag, Sun, Moon, ArrowUpRight } from 'lucide-react';
-import HeaderUniversal from '../../../components/Header';
 import Footer from '../../../components/Footer';
 import { getLookbooks } from '../../../utils/outlookAction';
 import Link from 'next/link';
+import Header from '../../../components/Header';
 
 // --- VARIAN ANIMASI DIPERBAIKI ---
 const containerVariants = {
@@ -135,8 +135,8 @@ const LookbookModal = ({ item, onClose }) => {
 
           {images.length > 1 && (
             <>
-              <button onClick={() => navigate('prev')} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"><ChevronLeft size={24} /></button>
-              <button onClick={() => navigate('next')} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"><ChevronRight size={24} /></button>
+              <button onClick={() => navigate('prev')} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all backdrop-blur-sm"><ChevronLeft size={24} /></button>
+              <button onClick={() => navigate('next')} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all backdrop-blur-sm"><ChevronRight size={24} /></button>
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                 {images.map((_, idx) => (
                   <div key={idx} className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`} />
@@ -217,7 +217,7 @@ const NewArrivals = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white flex flex-col font-sans transition-colors duration-500">
-      <HeaderUniversal />
+      <Header />
 
       {/* Background Noise */}
       <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none z-0 mix-blend-multiply dark:mix-blend-normal" 

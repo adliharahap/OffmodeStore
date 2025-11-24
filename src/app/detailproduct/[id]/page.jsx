@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import HeaderUniversal from "../../../../components/Header";
 // GANTI IMPORT DI BAWAH INI:
 import { getProductDataByIdServer } from "../../../../utils/fetchProductServer"; 
 import DetailProduct from "./DetailProductPage"; 
+import Header from "../../../../components/Header";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -130,7 +130,7 @@ export default async function DetailProductPage({ params }) {
 
   return (
     <>
-      <HeaderUniversal />
+      <Header />
       <DetailProduct product={formattedProduct} isLoggedIn={isLoggedIn} />
     </>
   );

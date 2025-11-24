@@ -7,7 +7,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Star, Minus, Plus,
-  ShoppingCart, ShoppingBag, Loader2, X, LogIn, CheckCircle, AlertCircle
+  ShoppingCart, ShoppingBag, Loader2, X, LogIn, CheckCircle, AlertCircle,
+  Share2,
+  LinkIcon,
+  Send
 } from "lucide-react";
 
 import { addToCartAction, getCartCount } from "../../../../utils/cartActions";
@@ -74,6 +77,163 @@ const SimpleToast = ({ show, message, type, onClose }) => {
   );
 };
 
+// --- 2. KOMPONEN WHATSAPP ICON ---
+const WhatsappIcon = (props) => (
+  <svg
+    fill="currentColor"
+    viewBox="0 0 16 16"
+    className="w-6 h-6"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path d="M11.42 9.49c-.19-.09-1.1-.54-1.27-.61s-.29-.09-.42.1-.48.6-.59.73-.21.14-.4 0a5.13 5.13 0 0 1-1.49-.92 5.25 5.25 0 0 1-1-1.29c-.11-.18 0-.28.08-.38s.18-.21.28-.32a1.39 1.39 0 0 0 .18-.31.38.38 0 0 0 0-.33c0-.09-.42-1-.58-1.37s-.3-.32-.41-.32h-.4a.72.72 0 0 0-.5.23 2.1 2.1 0 0 0-.65 1.55A3.59 3.59 0 0 0 5 8.2 8.32 8.32 0 0 0 8.19 11c.44.19.78.3 1.05.39a2.53 2.53 0 0 0 1.17.07 1.93 1.93 0 0 0 1.26-.88 1.67 1.67 0 0 0 .11-.88c-.05-.07-.17-.12-.36-.21z" />
+    <path d="M13.29 2.68A7.36 7.36 0 0 0 8 .5a7.44 7.44 0 0 0-6.41 11.15l-1 3.85 3.94-1a7.4 7.4 0 0 0 3.55.9H8a7.44 7.44 0 0 0 5.29-12.72zM8 14.12a6.12 6.12 0 0 1-3.15-.87l-.22-.13-2.34.61.62-2.28-.14-.23a6.18 6.18 0 0 1 9.6-7.65 6.12 6.12 0 0 1 1.81 4.37A6.19 6.19 0 0 1 8 14.12z" />
+  </svg>
+);
+
+
+// --- 3. KOMPONEN SHARE MODAL ---
+const ShareModal = ({ isVisible, onClose, productUrl, productName }) => {
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  
+  const triggerToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  const shareText = `Lihat produk ini: ${productName}. Cek di sini: ${productUrl}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
+  const handleCopyLink = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(productUrl).then(() => {
+        triggerToast("Tautan berhasil disalin!", "success");
+        onClose();
+      }).catch(err => {
+        triggerToast("Gagal menyalin tautan.", "error");
+      });
+    } else {
+      triggerToast("Browser Anda tidak mendukung fitur salin otomatis.", "error");
+    }
+  };
+
+  const handleWebShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `Bagikan ${productName}`,
+        text: shareText,
+        url: productUrl,
+      })
+      .then(() => onClose())
+      .catch((error) => {
+          if (error.name !== 'AbortError') {
+              triggerToast("Gagal membagikan. Mungkin dibatalkan.", "error");
+          }
+      });
+    } else {
+        // Fallback for browsers without Web Share API
+        triggerToast("Web Share API tidak tersedia. Silakan gunakan opsi Salin Tautan.", "error");
+    }
+  };
+
+  const ShareButton = ({ icon: Icon, text, onClick, colorClass, isLink = false, href = "#" }) => (
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="w-full"
+    >
+      {isLink ? (
+        <a 
+          href={href} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className={`flex items-center justify-start gap-4 p-4 rounded-xl font-semibold transition-all ${colorClass} text-white shadow-lg`}
+        >
+          <Icon className="w-6 h-6" />
+          <span>{text}</span>
+        </a>
+      ) : (
+        <button
+          onClick={onClick}
+          className={`w-full flex items-center justify-start gap-4 p-4 rounded-xl font-semibold transition-all ${colorClass} text-white shadow-lg`}
+        >
+          <Icon className="w-6 h-6" />
+          <span>{text}</span>
+        </button>
+      )}
+    </motion.div>
+  );
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-60 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.8, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.8, y: 50 }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SimpleToast show={toast.show} message={toast.message} type={toast.type} />
+
+            <div className="flex justify-between items-center mb-6 border-b pb-3 border-gray-100 dark:border-white/5">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Bagikan Produk
+              </h3>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Opsi 1: Salin Tautan */}
+              <ShareButton
+                icon={LinkIcon}
+                text="Salin Tautan"
+                onClick={handleCopyLink}
+                colorClass="bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
+              />
+              
+              {/* Opsi 2: WhatsApp */}
+              <ShareButton
+                icon={WhatsappIcon}
+                text="WhatsApp"
+                isLink={true}
+                href={whatsappUrl}
+                colorClass="bg-[#25D366] hover:bg-[#1DA851]"
+              />
+
+              {/* Opsi 3: Web Share API / Lainnya */}
+              <ShareButton
+                icon={Send}
+                text="Opsi Lainnya (Web Share)"
+                onClick={handleWebShare}
+                colorClass="bg-purple-600 hover:bg-purple-700"
+              />
+            </div>
+            
+            <p className="text-xs text-center text-gray-400 dark:text-gray-600 mt-6">
+                URL Produk: {productUrl.substring(0, 30)}...
+            </p>
+
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 // --- HELPER ---
 const variants = {
   enter: (direction) => ({ x: direction > 0 ? 1000 : -1000, opacity: 0 }),
@@ -102,6 +262,8 @@ const DetailProduct = ({ product }) => {
   // State UI Interaction
   const [isAddToCartLoading, setIsAddToCartLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // New state for Share Modal
+
 
   // State Toast Notification
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -351,9 +513,18 @@ const DetailProduct = ({ product }) => {
                 )}
               </div>
 
-              <h1 className="text-3xl md:text-5xl font-serif font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight leading-tight">
-                {product.name}
-              </h1>
+              <div className="flex justify-between items-center mb-4">
+                <h1 className="text-3xl md:text-5xl font-serif font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+                  {product.name}
+                </h1>
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="p-2 ml-4 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200 rounded-full bg-gray-100 dark:bg-white/5"
+                  aria-label="Bagikan Produk"
+                >
+                  <Share2 size={24} />
+                </button>
+              </div>
 
               <div className="flex items-baseline gap-4 mt-2">
                 <AnimatePresence mode="wait">
@@ -394,8 +565,8 @@ const DetailProduct = ({ product }) => {
                     key={color.name}
                     onClick={() => handleColorSelect(color)}
                     className={`group relative flex items-center gap-3 p-2 pr-4 rounded-xl border-2 transition-all duration-300 ${selectedColor === color.name
-                        ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
-                        : 'border-transparent bg-gray-100 dark:bg-gray-950 hover:border-purple-300 dark:hover:border-purple-600'
+                      ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                      : 'border-transparent bg-gray-100 dark:bg-gray-950 hover:border-purple-300 dark:hover:border-purple-600'
                       }`}
                   >
                     <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-black/5">
@@ -646,6 +817,13 @@ const DetailProduct = ({ product }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ShareModal 
+        isVisible={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        productUrl={currentUrl}
+        productName={product.name}
+      />
     </motion.div>
   );
 };

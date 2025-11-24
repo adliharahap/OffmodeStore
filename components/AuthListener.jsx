@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
-import { useDispatch } from "react-redux";
+import { useEffect, useCallback, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux"; // Tambah useSelector
 import { clearAuth, setUser } from "../store/slice/authslice";
 import { getCartCount } from "../utils/cartActions";
 import { setCartCount } from "../store/slice/cartSlice";
@@ -9,92 +9,89 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function AuthListener() {
   const dispatch = useDispatch();
+  
+  // Ambil sinyal refresh dari Redux
+  const { refreshSignal } = useSelector((state) => state.auth);
+
+  // Ref untuk mencegah double fetch di React Strict Mode (Development)
+  const isFetching = useRef(false);
 
   /**
-   * Helper: Sinkronisasi data User dari Auth + Database
+   * CORE LOGIC: Fetch Data User & Profil & Cart
    */
-  const fetchAndDispatchUser = useCallback(async (userAuth) => {
+  const syncUserData = useCallback(async () => {
+    // Prevent race conditions
+    if (isFetching.current) return;
+    isFetching.current = true;
+
     try {
-      if (!userAuth) {
+      console.log("🔄 AuthListener: Syncing data...");
+
+      // 1. Cek Session ke Server Supabase (Wajib pakai getUser biar fresh)
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error || !user) {
+        console.log("AuthListener: No active session / Token expired.");
         dispatch(clearAuth());
         dispatch(setCartCount(0));
         return;
       }
 
-      // 1. Fetch Data Profil Terbaru dari Database
-      // Gunakan .maybeSingle() agar tidak error jika data belum ada (misal user baru)
-      const { data: profileData, error } = await supabase
+      // 2. Ambil Data Profil Terbaru dari Database
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", userAuth.id)
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error("AuthListener DB Error:", error.message);
+      if (profileError) {
+        console.error("AuthListener DB Error:", profileError.message);
       }
 
-      // 2. PENTING: PRIORITAS PENGGABUNGAN DATA
-      // Urutan ini menjamin Role di Database menimpa Role di Metadata JWT lama
+      const finalEmail = profileData?.email || user.user_metadata?.email || user.email;
+
+      // 3. Gabungkan Data (Database menimpa Metadata lama)
       const mergedUser = {
-        ...userAuth,              // 1. Data dasar (id, email, dll)
-        ...userAuth.user_metadata,// 2. Metadata lama (dari cookie/JWT)
-        ...profileData,           // 3. Data Database TERBARU (Ini yang menang/menimpa)
+        ...user,
+        ...user.user_metadata,
+        ...profileData, 
+        email: finalEmail,
       };
 
-      // 3. Update Redux
-      // console.log("User Synced. Role:", mergedUser.role); // Debugging
+      // 4. Update Redux User
       dispatch(setUser(mergedUser));
 
-      // 4. Update Keranjang
+      // 5. Update Cart
       const count = await getCartCount();
       dispatch(setCartCount(count));
+
+      console.log("✅ AuthListener: Data Synced. Role:", mergedUser.role);
 
     } catch (err) {
       console.error("AuthListener Critical Error:", err);
       dispatch(clearAuth());
+    } finally {
+      isFetching.current = false;
     }
   }, [dispatch, supabase]);
 
 
+  // --- EFFECT 1: Jalankan saat Component Mount (Reload Browser) & Saat Sinyal Berubah ---
   useEffect(() => {
-    // --- LANGKAH 1: CEK SESSION KE SERVER SAAT MOUNT (Initial Load) ---
-    const initializeAuth = async () => {
-      // Gunakan getUser() bukan getSession(). 
-      // getUser() memvalidasi token ke server Supabase, memastikan data tidak stale.
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      // JIKA SERVER BILANG GAK ADA USER (LOGOUT), TAPI REDUX MASIH NYIMPAN DATA
-      if (error || !user) {
-        console.log("Session Invalid/Expired. Cleaning up...");
-        dispatch(clearAuth());
-        dispatch(setCartCount(0));
-        
-        // HAPUS LOCAL STORAGE MANUAL (Jaga-jaga redux-persist bandel)
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('persist:root'); 
-        }
-        return;
-      }
+    syncUserData();
+  }, [syncUserData, refreshSignal]); // Dependency ke refreshSignal memicu fetch ulang
 
-      await fetchAndDispatchUser(user);
-    };
 
-    initializeAuth();
-
-    // --- LANGKAH 2: DENGARKAN PERUBAHAN (Login/Logout/Refresh) ---
+  // --- EFFECT 2: Supabase Event Listener (Login/Logout) ---
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // console.log("Auth Event:", event);
-
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-           // Pastikan kita kirim session.user
-           await fetchAndDispatchUser(session?.user);
+      async (event) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+           // Jangan fetch langsung disini, panggil syncUserData agar logic terpusat
+           syncUserData();
         } else if (event === 'SIGNED_OUT') {
            dispatch(clearAuth());
            dispatch(setCartCount(0));
-           
-           // Opsional: Hapus storage manual jika perlu, tapi clearAuth sudah cukup untuk UI
-           // localStorage.clear(); 
         }
       }
     );
@@ -102,7 +99,7 @@ export default function AuthListener() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [dispatch, supabase, fetchAndDispatchUser]);
+  }, [dispatch, supabase, syncUserData]);
 
   return null;
 }

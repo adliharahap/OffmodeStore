@@ -12,11 +12,11 @@ import {
   Scaling,
   Palette,
 } from 'lucide-react';
-import HeaderUniversal from '../../../components/Header';
 import { ProductCard } from '../../../components/ProductCard';
 import Footer from '../../../components/Footer';
 import { getAllProductsForCustomer } from '../../../utils/getProductDataAction';
 import HeroCarousel from './_components/HeroCarousel';
+import Header from '../../../components/Header';
 
 // --- SKELETON COMPONENT (LOADING UI) ---
 const ProductCardSkeleton = () => (
@@ -303,7 +303,7 @@ const ProductsPage = () => {
 
   return (
     <>
-      <HeaderUniversal />
+      <Header />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-14">
         <div className="container px-4 mx-auto">
           <HeroCarousel />
