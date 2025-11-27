@@ -217,7 +217,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans pb-10 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans pb-10 pt-20 md:pt-0 transition-colors duration-300">
       <main className="mx-auto p-4 md:p-8">
         
         {/* Header & Filter */}

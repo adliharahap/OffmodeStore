@@ -66,21 +66,21 @@ export async function proxy(req) {
 
   if (pathname === '/myorders') {
     if (!user) {
-      return NextResponse.redirect(notFoundUrl)
+      return NextResponse.redirect(new URL('/login', req.url))
     }
     return res
   }
 
   if (pathname === '/mycart') {
     if (!user) {
-      return NextResponse.redirect(notFoundUrl)
+      return NextResponse.redirect(new URL('/login', req.url))
     }
     return res
   }
 
   if (pathname === '/profile') {
     if (!user) {
-      return NextResponse.redirect(notFoundUrl)
+      return NextResponse.redirect(new URL('/login', req.url))
     }
     return res
   }

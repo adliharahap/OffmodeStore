@@ -699,7 +699,6 @@ export default function CheckoutPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Metode Bayar</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{successData.paymentLogo}</span>
                         <span className="text-sm font-bold text-gray-900">{successData.paymentName}</span>
                       </div>
                     </div>

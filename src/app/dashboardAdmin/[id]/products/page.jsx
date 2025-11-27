@@ -88,7 +88,7 @@ export default function ProductsPage() {
     setSelectedProduct(null);
   };
 
-const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!selectedProduct?.id) return;
 
     setIsDeleting(true);
@@ -98,10 +98,10 @@ const handleConfirmDelete = async () => {
     if (result.success) {
       alert("Produk dan gambar berhasil dihapus permanen.");
       closeModal();
-      
+
       // PANGGIL FUNGSI FETCH DI SINI UNTUK REFRESH UI
-      await fetchProducts(); 
-      
+      await fetchProducts();
+
     } else {
       alert("Gagal menghapus: " + result.message);
     }
@@ -110,9 +110,9 @@ const handleConfirmDelete = async () => {
   };
 
   return (
-    <div className='p-8'>
+    <div className='px-8 pb-8 pt-30 md:pt-8'>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-3 justify-between items-start sm:flex-row md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Produk</h1>
         <Link href={`${pathname}/addNewProduct`} className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center shadow-md hover:bg-gray-800 transition-colors">
           <Plus size={18} className="mr-2" /> Tambah Produk
@@ -147,88 +147,90 @@ const handleConfirmDelete = async () => {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Produk</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Harga</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Total Stok</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Terjual</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Rating</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-
-            {/* 1. KONDISI LOADING: Tampilkan Skeleton */}
-            {isLoading ? (
-              <>
-                <TableSkeletonRow />
-                <TableSkeletonRow />
-                <TableSkeletonRow />
-                <TableSkeletonRow />
-                <TableSkeletonRow />
-              </>
-            ) : filteredProducts.length === 0 ? (
-
-              /* 2. KONDISI DATA KOSONG: Tampilkan Pesan Empty State */
+        <div className='overflow-x-auto'>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center text-gray-500">
-                    <PackageOpen size={48} className="text-gray-300 mb-3" />
-                    <p className="text-lg font-medium text-gray-700">Tidak ada produk ditemukan</p>
-                    <p className="text-sm">Coba ubah filter atau kata kunci pencarian Anda.</p>
-                  </div>
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Produk</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Harga</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Total Stok</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Terjual</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Rating</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
 
-            ) : (
+              {/* 1. KONDISI LOADING: Tampilkan Skeleton */}
+              {isLoading ? (
+                <>
+                  <TableSkeletonRow />
+                  <TableSkeletonRow />
+                  <TableSkeletonRow />
+                  <TableSkeletonRow />
+                  <TableSkeletonRow />
+                </>
+              ) : filteredProducts.length === 0 ? (
 
-              /* 3. KONDISI ADA DATA: Render Rows */
-              filteredProducts.map((product) => {
-                const displayImage = product.thumbnail || product.images?.[0]?.src || 'https://placehold.co/100x100/f0f0f0/333?text=No+Image';
-                const displayStock = product.total_stock !== undefined ? product.total_stock : calculateTotalStock(product);
+                /* 2. KONDISI DATA KOSONG: Tampilkan Pesan Empty State */
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-500">
+                      <PackageOpen size={48} className="text-gray-300 mb-3" />
+                      <p className="text-lg font-medium text-gray-700">Tidak ada produk ditemukan</p>
+                      <p className="text-sm">Coba ubah filter atau kata kunci pencarian Anda.</p>
+                    </div>
+                  </td>
+                </tr>
 
-                return (
-                  <tr key={product.id} onClick={() => openModal('detail', product)} className="hover:bg-gray-50 cursor-pointer transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="shrink-0 h-12 w-12">
-                          <img
-                            className="h-12 w-12 rounded-md object-cover bg-gray-100"
-                            src={displayImage}
-                            alt={product.name}
-                            onError={(e) => { e.target.src = 'https://placehold.co/100x100/f0f0f0/333?text=Img'; }}
-                          />
+              ) : (
+
+                /* 3. KONDISI ADA DATA: Render Rows */
+                filteredProducts.map((product) => {
+                  const displayImage = product.thumbnail || product.images?.[0]?.src || 'https://placehold.co/100x100/f0f0f0/333?text=No+Image';
+                  const displayStock = product.total_stock !== undefined ? product.total_stock : calculateTotalStock(product);
+
+                  return (
+                    <tr key={product.id} onClick={() => openModal('detail', product)} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="shrink-0 h-12 w-12">
+                            <img
+                              className="h-12 w-12 rounded-md object-cover bg-gray-100"
+                              src={displayImage}
+                              alt={product.name}
+                              onError={(e) => { e.target.src = 'https://placehold.co/100x100/f0f0f0/333?text=Img'; }}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                            {product.badge && <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.badge === 'Best Seller' ? 'bg-yellow-100 text-yellow-800' : product.badge === 'New' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>{product.badge}</span>}
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          {product.badge && <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.badge === 'Best Seller' ? 'bg-yellow-100 text-yellow-800' : product.badge === 'New' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>{product.badge}</span>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="text-sm text-gray-900">Rp {product.price?.toLocaleString('id-ID') || 0}</div>
+                          {product.originalPrice > 0 && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs font-bold rounded-full">{calculateDiscountPercent(product.price, product.originalPrice)}% OFF</span>}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="text-sm text-gray-900">Rp {product.price?.toLocaleString('id-ID') || 0}</div>
-                        {product.originalPrice > 0 && <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs font-bold rounded-full">{calculateDiscountPercent(product.price, product.originalPrice)}% OFF</span>}
-                      </div>
-                      {product.originalPrice > 0 && <div className="text-xs text-gray-500 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</div>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StockStatusLabel stock={displayStock} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{product.sold_count_total || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{product.rating ? `${product.rating} ★` : '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={(e) => { e.stopPropagation(); openModal('edit', product); }} className="text-gray-600 hover:text-gray-900 mr-3 p-1" title="Edit"><FilePenLine size={18} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); openModal('delete', product); }} className="text-red-500 hover:text-red-700 p-1" title="Hapus"><Trash2 size={18} /></button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                        {product.originalPrice > 0 && <div className="text-xs text-gray-500 line-through">Rp {product.originalPrice.toLocaleString('id-ID')}</div>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StockStatusLabel stock={displayStock} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{product.sold_count_total || 0}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{product.rating ? `${product.rating} ★` : '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onClick={(e) => { e.stopPropagation(); openModal('edit', product); }} className="text-gray-600 hover:text-gray-900 mr-3 p-1" title="Edit"><FilePenLine size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); openModal('delete', product); }} className="text-red-500 hover:text-red-700 p-1" title="Hapus"><Trash2 size={18} /></button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modals Manager */}

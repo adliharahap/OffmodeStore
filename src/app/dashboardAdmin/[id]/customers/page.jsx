@@ -290,7 +290,7 @@ export default function AdminUserManagement() {
     try {
       const data = await getAllUsers();
       if (data) {
-        setUsers(data);
+        setUsers(data);        
       }
     } catch (e) {
       console.error(e);
@@ -339,7 +339,7 @@ export default function AdminUserManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans pb-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans pb-10 pt-20 md:pt-0">
       <main className="mx-auto p-8 space-y-10">
 
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

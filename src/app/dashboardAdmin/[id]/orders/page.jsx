@@ -169,7 +169,7 @@ export default function AdminOrderDashboard() {
 
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-10">
+        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-10 pt-20 md:pt-0">
             <main className="mx-auto p-8">
 
                 {/* Header */}
