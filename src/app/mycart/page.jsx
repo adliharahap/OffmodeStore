@@ -13,10 +13,14 @@ import Link from 'next/link';
 import {
   getCartItemsAction,
   updateCartQuantityAction,
-  deleteCartItemAction
+  deleteCartItemAction,
+  clearCartAction,
+  getCartCount
 } from '../../../utils/cartActions';
 import { useRouter } from 'next/navigation';
 import Header from '../../../components/Header';
+import { setCartCount } from '../../../store/slice/cartSlice';
+import { useDispatch } from 'react-redux';
 
 
 // --- FORMAT HARGA ---
@@ -47,6 +51,7 @@ const CartPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(null); // ID item yang sedang loading update
   const router = useRouter();
+  const dispatch = useDispatch();
 
   // 1. FETCH DATA REAL SAAT MOUNT
   useEffect(() => {
@@ -128,9 +133,30 @@ const CartPage = () => {
     try {
       const res = await deleteCartItemAction(id);
       if (!res.success) throw new Error(res.message);
+
+      // --- UPDATE REDUX COUNT (Server Fetch) ---
+      // Ambil jumlah terbaru dari database agar akurat
+      const latestCount = await getCartCount();
+      dispatch(setCartCount(latestCount));
+
     } catch (error) {
       console.error("Gagal hapus:", error);
       setCartItems(backupItems); // Rollback
+    }
+  };
+
+  const handleClearCart = async () => {
+    if (!confirm("Yakin ingin mengosongkan seluruh keranjang?")) return;
+
+    const res = await clearCartAction();
+    if (res.success) {
+      // Refresh data lokal (kosongkan state)
+      setCartItems([]);
+      setSelectedItems([]);
+
+      dispatch(setCartCount(0));
+    } else {
+      alert("Gagal mengosongkan keranjang: " + res.message);
     }
   };
 
@@ -206,7 +232,7 @@ const CartPage = () => {
 
                     {selectedItems.length > 0 && (
                       <button
-                        onClick={() => alert("Fitur hapus massal")}
+                        onClick={() => handleClearCart()}
                         className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-colors"
                       >
                         <Trash2 className="w-4 h-4" /> Remove ({selectedItems.length})

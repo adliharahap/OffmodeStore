@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { sendTelegramNotification } from "./telegramNotifier"; // Pastikan path import ini benar
 
 async function createSupabaseServerActionClient() {
   const cookieStore = await cookies();
@@ -57,12 +58,13 @@ export async function processCheckoutAction({
   const shippingCost = 15000; 
   const adminFee = 1000;
   const validatedItems = [];
+  const telegramItems = [];
 
   for (const item of items) {
-    // UPDATE 1: Ambil kolom 'sold_count' juga
+    // FIX: Tambahkan 'product_id' di dalam select agar tidak undefined
     const { data: variant, error } = await supabase
       .from('product_variants')
-      .select('id, product_id, stock, price, sold_count') 
+      .select('id, product_id, stock, price, color_name, size_name, sold_count, products(name)') 
       .eq('id', item.variantId)
       .single();
 
@@ -71,19 +73,27 @@ export async function processCheckoutAction({
     }
 
     if (variant.stock < item.quantity) {
-      return { success: false, message: `Stok habis untuk salah satu produk.` };
+      return { success: false, message: `Stok habis untuk produk: ${variant.products?.name} (${variant.color_name}).` };
     }
 
     itemsTotal += variant.price * item.quantity;
     
     validatedItems.push({
       variantId: item.variantId,
-      productId: variant.product_id, 
+      productId: variant.product_id, // Sekarang ini aman karena sudah di-select
       quantity: item.quantity,
       price: variant.price,
       currentStock: variant.stock,
-      // UPDATE 2: Simpan data sold_count saat ini (default 0 jika null)
       currentVariantSold: variant.sold_count || 0 
+    });
+
+    // Data untuk Telegram
+    telegramItems.push({
+      productName: variant.products?.name || 'Unknown Product',
+      variantColor: variant.color_name,
+      variantSize: variant.size_name,
+      quantity: item.quantity,
+      price: variant.price
     });
   }
 
@@ -113,7 +123,7 @@ export async function processCheckoutAction({
     return { success: false, message: "Gagal membuat pesanan." };
   }
 
-  // B. Proses Setiap Item (Insert OrderItem -> Update Stok & Sold Varian -> Update Sold Produk)
+  // B. Proses Setiap Item
   try {
     for (const item of validatedItems) {
       // 1. Insert ke Order Items
@@ -127,35 +137,36 @@ export async function processCheckoutAction({
 
       // 2. UPDATE VARIANT (Kurangi Stock & Tambah Sold Count Varian)
       const newStock = item.currentStock - item.quantity;
-      const newVariantSold = item.currentVariantSold + item.quantity; // Hitung sold count baru
+      const newVariantSold = item.currentVariantSold + item.quantity;
 
       const { error: stockError } = await supabase
         .from('product_variants')
         .update({ 
             stock: newStock,
-            sold_count: newVariantSold // <--- UPDATE KOLOM INI DI VARIANT
+            sold_count: newVariantSold 
         })
         .eq('id', item.variantId);
       
       if (stockError) throw new Error(`Gagal update varian: ${stockError.message}`);
 
       // 3. UPDATE PRODUCT (Tambah Sold Count Total di Induk Produk)
-      // Logic: Ambil sold_count produk saat ini -> Tambah quantity -> Update
-      
-      const { data: productData, error: prodFetchError } = await supabase
-        .from('products')
-        .select('sold_count_total')
-        .eq('id', item.productId)
-        .single();
-      
-      if (!prodFetchError && productData) {
-        const currentProductSold = productData.sold_count_total || 0;
-        const newProductSold = currentProductSold + item.quantity;
-
-        await supabase
+      // Pastikan productId ada sebelum query
+      if (item.productId) {
+        const { data: productData, error: prodFetchError } = await supabase
           .from('products')
-          .update({ sold_count_total: newProductSold })
-          .eq('id', item.productId);
+          .select('sold_count_total')
+          .eq('id', item.productId)
+          .single();
+        
+        if (!prodFetchError && productData) {
+          const currentProductSold = productData.sold_count_total || 0;
+          const newProductSold = currentProductSold + item.quantity;
+
+          await supabase
+            .from('products')
+            .update({ sold_count_total: newProductSold })
+            .eq('id', item.productId);
+        }
       }
       
       // 4. Hapus dari Keranjang
@@ -168,13 +179,32 @@ export async function processCheckoutAction({
 
   } catch (err) {
     console.error("Transaction Error (Partial):", err);
+    // Note: Karena Supabase HTTP API tidak support transaction rollback penuh secara natif di client library,
+    // jika error di tengah loop, sebagian data mungkin sudah tersimpan. 
+    // Untuk MVP ini sudah cukup baik.
     return { success: false, message: "Terjadi kesalahan saat memproses item pesanan." };
   }
 
+  // --- 5. REVALIDASI & NOTIFIKASI ---
   revalidatePath('/mycart');
   revalidatePath('/products');
-  // Opsional: Revalidate halaman detail produk agar sold count terupdate real-time
-  revalidatePath(`/products/[slug]`); 
+  revalidatePath('/pesanan'); // Refresh halaman order history user
+
+  // Kirim Notif ke Telegram
+  const customerName = user.user_metadata?.full_name || addressData.recipient_name || "Pelanggan";
+  
+  // Kita jalankan tanpa await agar return ke user lebih cepat (Fire and Forget)
+  // atau pakai await jika ingin memastikan notif terkirim sebelum sukses.
+  // Disini saya pakai await biar aman.
+  await sendTelegramNotification({
+    orderId: newOrder.id,
+    totalAmount: grandTotal,
+    customerName: customerName,
+    address: fullAddressSnapshot,
+    paymentMethod: paymentMethodLabel,
+    items: telegramItems,
+    status: newOrder.status
+  });
 
   return { success: true, orderId: newOrder.id, total: grandTotal };
 }

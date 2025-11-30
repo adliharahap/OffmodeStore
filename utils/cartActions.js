@@ -119,14 +119,14 @@ export async function addToCartAction(variantId, quantity) {
   }
 }
 
-// --- 1. GET CART ITEMS (FETCH) ---
+// utils/cartActions.js
+
 export async function getCartItemsAction() {
   const supabase = await createSupabaseServerActionClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return [];
 
-  // Query Nested: Cart -> Variant -> Product -> Images
   const { data, error } = await supabase
     .from('cart_items')
     .select(`
@@ -142,7 +142,8 @@ export async function getCartItemsAction() {
           id,
           name,
           product_images (
-            image_url
+            image_url,
+            linked_color_name
           )
         )
       )
@@ -155,20 +156,33 @@ export async function getCartItemsAction() {
     return [];
   }
 
-  // Flatten Data agar mudah dipakai di Frontend
-  return data.map(item => ({
-    id: item.id, // ID Keranjang
-    variantId: item.variant.id,
-    name: item.variant.product.name,
-    productId: item.variant.product.id,
-    // Ambil gambar pertama
-    image: item.variant.product.product_images?.[0]?.image_url || 'https://placehold.co/800x800?text=No+Image',
-    price: item.variant.price,
-    quantity: item.quantity,
-    color: item.variant.color_name,
-    size: item.variant.size_name,
-    stock: item.variant.stock
-  }));
+  // Flatten & Filter Image
+  return data.map(item => {
+    const product = item.variant.product;
+    const variantColor = item.variant.color_name;
+    const allImages = product.product_images || [];
+
+    // LOGIKA UTAMA: Cari gambar yang warnanya cocok
+    const matchedImage = allImages.find(img => img.linked_color_name === variantColor);
+    
+    // Fallback: Jika tidak ada yg cocok, pakai gambar pertama, atau placeholder
+    const finalImageUrl = matchedImage 
+      ? matchedImage.image_url 
+      : (allImages[0]?.image_url || 'https://placehold.co/800x800?text=No+Image');
+
+    return {
+      id: item.id,
+      variantId: item.variant.id,
+      productId: product.id,
+      name: product.name,
+      image: finalImageUrl, // Gunakan hasil filter
+      price: item.variant.price,
+      quantity: item.quantity,
+      color: variantColor,
+      size: item.variant.size_name,
+      stock: item.variant.stock
+    };
+  });
 }
 
 // --- 2. UPDATE QUANTITY ---
@@ -198,6 +212,31 @@ export async function deleteCartItemAction(cartId) {
   if (error) return { success: false, message: error.message };
 
   revalidatePath('/cart');
+  return { success: true };
+}
+
+export async function clearCartAction() {
+  const supabase = await createSupabaseServerActionClient();
+  
+  // 1. Cek Auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: "Unauthorized" };
+
+  // 2. Hapus semua data di tabel cart_items yang user_id nya cocok
+  const { error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error("Clear cart error:", error.message);
+    return { success: false, message: error.message };
+  }
+
+  // 3. Revalidate agar tampilan keranjang jadi kosong
+  revalidatePath('/mycart'); 
+  revalidatePath('/', 'layout'); // Update badge di header juga
+
   return { success: true };
 }
 

@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb', // Atur limit ke 10MB (atau sesuai kebutuhan)
+      bodySizeLimit: '10mb',
+      allowedOrigins: [
+        'thundering-gael-brackish.ngrok-free.dev' 
+      ],
     },
   },
 };
