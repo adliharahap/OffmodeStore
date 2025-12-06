@@ -51,6 +51,7 @@ export async function getFeaturedProducts() {
           original_price
         )
       `)
+      .eq('is_deleted', false)
       // LOGIKA UTAMA: 
       // 1. Urutkan berdasarkan penjualan terbanyak
       .order('sold_count_total', { ascending: false })

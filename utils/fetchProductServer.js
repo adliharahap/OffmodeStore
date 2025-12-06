@@ -50,6 +50,7 @@ export async function getProductDataByIdServer(productId) {
       )
     `)
     .eq('id', productId)
+    .eq('is_deleted', false)
     .single();
 
   if (error) {

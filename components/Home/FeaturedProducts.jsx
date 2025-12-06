@@ -106,9 +106,8 @@ const FeaturedProducts = () => {
                 <motion.div
                   key={product.id}
                   variants={itemVariants}
-                  className="h-full"
                 >
-                  <Link href={`/detailproduct/${product.id}`} className="h-full bg-red-500 transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
+                  <Link href={`/detailproduct/${product.id}`} className="transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
                       <ProductCard product={product} />
                   </Link>
                 </motion.div>
