@@ -126,7 +126,7 @@ export async function processCheckoutAction({
   // B. Proses Setiap Item
   try {
     for (const item of validatedItems) {
-      // 1. Insert ke Order Items
+      // 1. Insert ke Order Items (User biasa boleh insert ini jika RLS order_items benar)
       const { error: itemError } = await supabase.from('order_items').insert({
         order_id: newOrder.id,
         variant_id: item.variantId,
@@ -135,41 +135,17 @@ export async function processCheckoutAction({
       });
       if (itemError) throw new Error(`Gagal simpan item: ${itemError.message}`);
 
-      // 2. UPDATE VARIANT (Kurangi Stock & Tambah Sold Count Varian)
-      const newStock = item.currentStock - item.quantity;
-      const newVariantSold = item.currentVariantSold + item.quantity;
+      // 2. UPDATE STOK & SOLD (PAKAI RPC BIAR AMAN DARI RLS)
+      // Kita panggil fungsi database yang sudah kita buat tadi
+      const { error: rpcError } = await supabase.rpc('process_order_item', {
+        p_variant_id: item.variantId,
+        p_product_id: item.productId,
+        p_quantity: item.quantity
+      });
 
-      const { error: stockError } = await supabase
-        .from('product_variants')
-        .update({ 
-            stock: newStock,
-            sold_count: newVariantSold 
-        })
-        .eq('id', item.variantId);
+      if (rpcError) throw new Error(`Gagal update stok (RPC): ${rpcError.message}`);
       
-      if (stockError) throw new Error(`Gagal update varian: ${stockError.message}`);
-
-      // 3. UPDATE PRODUCT (Tambah Sold Count Total di Induk Produk)
-      // Pastikan productId ada sebelum query
-      if (item.productId) {
-        const { data: productData, error: prodFetchError } = await supabase
-          .from('products')
-          .select('sold_count_total')
-          .eq('id', item.productId)
-          .single();
-        
-        if (!prodFetchError && productData) {
-          const currentProductSold = productData.sold_count_total || 0;
-          const newProductSold = currentProductSold + item.quantity;
-
-          await supabase
-            .from('products')
-            .update({ sold_count_total: newProductSold })
-            .eq('id', item.productId);
-        }
-      }
-      
-      // 4. Hapus dari Keranjang
+      // 3. Hapus dari Keranjang
       await supabase
         .from('cart_items')
         .delete()

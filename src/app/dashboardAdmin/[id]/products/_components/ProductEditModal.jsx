@@ -1,14 +1,19 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { X, Check, AlertCircle, Loader2, Plus, Trash2, Image as ImageIcon, Tag, Box, Layers, Save } from 'lucide-react';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  X, Check, Loader2, Plus, Trash2, Image as ImageIcon, 
+  Tag, Box, Layers, Save, ArrowLeft, UploadCloud 
+} from 'lucide-react';
+
+// IMPORT SERVER ACTIONS ASLI
 import { getProductDataById, updateProductFullData } from '../../../../../../utils/getProductDataAction';
-
-
+import { supabase } from '../../../../../../lib/supabaseClient';
 // --- UI COMPONENTS ---
 
 const ModalWrapper = ({ children, onClose }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200">
+    <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200">
       {children}
     </div>
   </div>
@@ -27,7 +32,7 @@ const ModalHeader = ({ title, subtitle, onClose }) => (
 );
 
 const ModalFooter = ({ children }) => (
-  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0 z-10">
+  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end items-center gap-3 shrink-0 z-10">
     {children}
   </div>
 );
@@ -64,9 +69,18 @@ const CheckboxField = ({ label, checked, onChange }) => (
 
 // --- MAIN COMPONENT ---
 
-export default function ProductEditModal({ product = { id: '123' }, onClose, onSave }) {
+export default function ProductEditModal({ product, onClose, onSave }) {
   const [activeTab, setActiveTab] = useState('general');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // State untuk Fitur Tambah Varian Baru
+  const [isAddingVariantMode, setIsAddingVariantMode] = useState(false);
+  const [newVariantFile, setNewVariantFile] = useState(null); // File gambar varian baru
+  const [newVariantForm, setNewVariantForm] = useState({
+    color_name: '',
+    items: [{ id: 'temp-1', size_name: '', price: 0, original_price: 0, stock: 0 }]
+  });
 
   // Data States
   const [generalData, setGeneralData] = useState({
@@ -77,14 +91,15 @@ export default function ProductEditModal({ product = { id: '123' }, onClose, onS
   const [specifications, setSpecifications] = useState([]);
   const [images, setImages] = useState([]);
 
-  // 1. FETCH DATA
+  // 1. FETCH DATA (Menggunakan Server Action Asli)
   useEffect(() => {
     const fetchData = async () => {
       if (!product?.id) return;
+      
       setIsLoading(true);
       try {
         const fullData = await getProductDataById(product.id);
-
+        
         if (fullData) {
           setGeneralData({
             name: fullData.name || '',
@@ -102,7 +117,8 @@ export default function ProductEditModal({ product = { id: '123' }, onClose, onS
           setImages(fullData.product_images || []);
         }
       } catch (error) {
-        console.error("Error fetching:", error);
+        console.error("Error fetching product details:", error);
+        alert("Gagal memuat data produk.");
       } finally {
         setIsLoading(false);
       }
@@ -110,419 +126,642 @@ export default function ProductEditModal({ product = { id: '123' }, onClose, onS
     fetchData();
   }, [product?.id]);
 
-  // --- HANDLERS ---
+  // --- HELPER: Ambil harga default dari varian yang sudah ada ---
+  const getDefaultPrice = () => {
+    if (variants.length > 0) return variants[0].price;
+    return 0;
+  };
+  const getDefaultOriginalPrice = () => {
+    if (variants.length > 0) return variants[0].original_price;
+    return 0;
+  };
 
+  // --- HANDLERS GENERIC ---
   const handleGeneralChange = (e) => {
     const { name, value, type, checked } = e.target;
     setGeneralData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
+  const handleSpecChange = (id, field, value) => {
+    setSpecifications(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+  const addSpec = () => setSpecifications(prev => [...prev, { id: `new-${Date.now()}`, spec_name: '', spec_value: '' }]);
+  const removeSpec = (id) => setSpecifications(prev => prev.filter(s => s.id !== id));
+
+  // --- HANDLERS VARIANTS (EXISTING) ---
   const handleVariantChange = (id, field, value) => {
     setVariants(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
   };
 
-  const handleSpecChange = (id, field, value) => {
-    setSpecifications(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  const removeVariant = (id) => {
+    if (window.confirm("Hapus varian ini?")) {
+      setVariants(prev => prev.filter(v => v.id !== id));
+    }
   };
 
-  const addSpec = () => {
-    setSpecifications(prev => [...prev, { id: `new-${Date.now()}`, spec_name: '', spec_value: '' }]);
+const handleUpdateGroupName = (oldName, newName) => {
+    // 1. Update nama warna di variants
+    setVariants(prev => prev.map(v => v.color_name === oldName ? { ...v, color_name: newName } : v));
+    
+    // 2. UPDATE JUGA di images (Sync Realtime)
+    setImages(prev => prev.map(img => 
+      img.linked_color_name === oldName 
+        ? { ...img, linked_color_name: newName } 
+        : img
+    ));
+    
+    // 3. Jika sedang dalam mode Add Variant, update form juga
+    if (isAddingVariantMode && newVariantForm.color_name === oldName) {
+        setNewVariantForm(prev => ({ ...prev, color_name: newName }));
+    }
   };
 
-  const removeSpec = (id) => {
-    setSpecifications(prev => prev.filter(s => s.id !== id));
+  const addSizeToGroup = (colorName) => {
+    const newVariant = {
+      id: `new-${Date.now()}`,
+      product_id: product?.id,
+      color_name: colorName,
+      size_name: '',
+      price: getDefaultPrice(), // Auto fill price
+      original_price: getDefaultOriginalPrice(),
+      stock: 0
+    };
+    setVariants(prev => [...prev, newVariant]);
   };
 
+  // --- HANDLERS NEW VARIANT FORM (PAGE 2) ---
+  const handleOpenAddVariant = () => {
+    // Reset form dengan harga default
+    setNewVariantForm({
+      color_name: '',
+      items: [{ 
+          id: 'temp-1', size_name: '', 
+          price: getDefaultPrice(), 
+          original_price: getDefaultOriginalPrice(), 
+          stock: 0 
+      }]
+    });
+    setNewVariantFile(null);
+    setIsAddingVariantMode(true);
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleNewVariantItemChange = (itemId, field, value) => {
+    setNewVariantForm(prev => ({
+      ...prev,
+      items: prev.items.map(item => item.id === itemId ? { ...item, [field]: value } : item)
+    }));
+  };
+
+  const addNewItemRow = () => {
+    setNewVariantForm(prev => ({
+      ...prev,
+      items: [...prev.items, { 
+          id: `temp-${Date.now()}`, size_name: '', 
+          price: getDefaultPrice(), 
+          original_price: getDefaultOriginalPrice(), 
+          stock: 0 
+      }]
+    }));
+  };
+
+  const removeNewItemRow = (itemId) => {
+    if (newVariantForm.items.length > 1) {
+      setNewVariantForm(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.id !== itemId)
+      }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) setNewVariantFile(file);
+  };
+
+  const saveNewVariantGroup = async () => {
+    if (!newVariantForm.color_name) {
+      alert("Nama warna harus diisi!");
+      return;
+    }
+
+    setIsSaving(true); // Show loading indicator on button
 
     try {
-      // 1. Persiapkan Payload sesuai format yang diterima Server Action (updateProductFullData)
+      // 1. Upload Gambar (Jika ada)
+      if (newVariantFile) {
+        const fileName = `${product.id}-${Date.now()}-${newVariantFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const filePath = `products/${product.id}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product_images')
+          .upload(filePath, newVariantFile);
+
+        if (uploadError) throw new Error("Gagal upload gambar: " + uploadError.message);
+
+        const { data: urlData } = supabase.storage
+          .from('product_images')
+          .getPublicUrl(filePath);
+
+        // Tambahkan ke state images agar langsung muncul
+        setImages(prev => [...prev, {
+           id: `new-img-${Date.now()}`,
+           product_id: product.id,
+           image_url: urlData.publicUrl,
+           linked_color_name: newVariantForm.color_name
+        }]);
+      }
+
+      // 2. Tambahkan Varian ke State Utama
+      const newVariantsToAdd = newVariantForm.items.map(item => ({
+        id: `new-${Date.now()}-${Math.random()}`,
+        product_id: product?.id,
+        color_name: newVariantForm.color_name,
+        size_name: item.size_name,
+        price: parseInt(item.price) || 0,
+        original_price: parseInt(item.original_price) || 0,
+        stock: parseInt(item.stock) || 0
+      }));
+
+      setVariants(prev => [...prev, ...newVariantsToAdd]);
+      
+      // 3. Reset & Kembali
+      setIsAddingVariantMode(false);
+
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- SUBMIT FINAL KE SERVER ---
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
       const payload = {
-        // Data General
         name: generalData.name,
         description: generalData.description,
         full_description: generalData.full_description,
         badge: generalData.badge,
         is_new_arrival: generalData.is_new_arrival,
         is_featured: generalData.is_featured,
-
-        // Data Relasional
+        
+        // Kirim varian yang sudah di-edit/tambah
         variants: variants.map(v => ({
           id: v.id,
-          product_id: product.id,
-          price: parseInt(v.price), // Pastikan format number
+          product_id: product?.id,
+          price: parseInt(v.price) || 0,
           original_price: parseInt(v.original_price) || 0,
-          stock: parseInt(v.stock),
+          stock: parseInt(v.stock) || 0,
           color_name: v.color_name, 
           size_name: v.size_name
         })),
+        
+        // Kirim spesifikasi
+        specifications: specifications.map(s => ({ id: s.id, spec_name: s.spec_name, spec_value: s.spec_value })),
 
-        specifications: specifications.map(s => ({
-          id: s.id, // ID lama atau 'new-...'
-          spec_name: s.spec_name,
-          spec_value: s.spec_value
-        }))
+        // Kirim gambar (terutama yang baru diupload lewat Add Variant)
+        // Server action harus handle insert gambar baru yang ID-nya 'new-...'
+        images: images 
       };
 
-      // console.log("🚀 Sending Payload:", payload);
+      const result = await updateProductFullData(product?.id, payload);
 
-      // 2. Panggil Server Action
-      const result = await updateProductFullData(product.id, payload);
-
-      // 3. Cek Hasil
       if (result.success) {
-        // Feedback Sukses
-        // Jika pakai SweetAlert2:
-        // Swal.fire('Berhasil!', 'Data produk berhasil diperbarui.', 'success');
-
-        // Atau pakai alert standar:
         alert("✅ Produk berhasil diperbarui!");
-
-        // Panggil onSave dari parent jika ada (misal untuk refresh table parent)
         if (onSave) onSave(result);
-
-        // Tutup Modal
         if (onClose) onClose();
       } else {
         throw new Error(result.message);
       }
-
     } catch (error) {
       console.error("❌ Error Saving:", error);
       alert(`Gagal menyimpan: ${error.message}`);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
-  // --- HELPER: GET IMAGE BY VARIANT COLOR ---
+  // --- HELPER: GROUP VARIANTS BY COLOR ---
+  const groupedVariants = useMemo(() => {
+    const groups = {};
+    variants.forEach(variant => {
+      const colorKey = variant.color_name || 'Tanpa Warna';
+      if (!groups[colorKey]) {
+        groups[colorKey] = [];
+      }
+      groups[colorKey].push(variant);
+    });
+    return groups;
+  }, [variants]);
+
   const getVariantImage = (colorName) => {
     if (!colorName) return null;
-    // Cari gambar yang 'linked_color_name' nya sama dengan warna variant ini
     const found = images.find(img => img.linked_color_name?.toLowerCase() === colorName.toLowerCase());
-    // Jika tidak ada yang spesifik warna, kembalikan gambar pertama (default) atau null
-    return found ? found.image_url : (images[0]?.image_url || null);
+    return found ? found.image_url : null;
   };
 
   return (
     <ModalWrapper onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <ModalHeader title="Edit Produk" subtitle={`ID: ${product?.id}`} onClose={onClose} />
 
         {/* NAVIGATION TABS */}
-        <div className="flex border-b border-gray-200 px-6 bg-white shrink-0 overflow-x-auto">
-          {[
-            { id: 'general', label: 'Informasi Umum', icon: Box },
-            { id: 'images', label: `Gambar (${images.length})`, icon: ImageIcon },
-            { id: 'variants', label: `Varian & Harga (${variants.length})`, icon: Layers },
-            { id: 'specs', label: `Spesifikasi (${specifications.length})`, icon: Tag },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 py-4 px-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                ? 'border-black text-black'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
-                }`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {!isAddingVariantMode && (
+          <div className="flex border-b border-gray-200 px-6 bg-white shrink-0 overflow-x-auto">
+            {[
+              { id: 'general', label: 'Informasi Umum', icon: Box },
+              { id: 'images', label: `Gambar (${images.length})`, icon: ImageIcon },
+              { id: 'variants', label: `Varian & Harga (${variants.length})`, icon: Layers },
+              { id: 'specs', label: `Spesifikasi (${specifications.length})`, icon: Tag },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 px-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                  ? 'border-black text-black'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                  }`}
+              >
+                <tab.icon size={16} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        {/* CONTENT AREA */}
+        <div className="flex-1 overflow-hidden bg-gray-50 relative min-h-0">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64">
+            <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
               <p className="text-sm text-gray-500">Memuat data...</p>
             </div>
           ) : (
-            <>
-              {/* === TAB: GENERAL === */}
-              {activeTab === 'general' && (
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-                  {/* Info Utama */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2">
-                      <InputField label="Nama Produk" name="name" value={generalData.name} onChange={handleGeneralChange} />
-                    </div>
-                    <div>
-                      <InputField label="Badge Label" name="badge" value={generalData.badge || ''} onChange={handleGeneralChange} />
-                    </div>
-                  </div>
-
-                  {/* Status Checkboxes */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <CheckboxField
-                      label="New Arrival (Produk Baru)"
-                      checked={generalData.is_new_arrival}
-                      onChange={(val) => setGeneralData(prev => ({ ...prev, is_new_arrival: val }))}
-                    />
-                    <CheckboxField
-                      label="Featured (Unggulan)"
-                      checked={generalData.is_featured}
-                      onChange={(val) => setGeneralData(prev => ({ ...prev, is_featured: val }))}
-                    />
-                  </div>
-
-                  {/* Deskripsi */}
-                  <div className="grid grid-cols-1 gap-6">
-                    <TextAreaField label="Deskripsi Singkat" name="description" value={generalData.description} onChange={handleGeneralChange} rows={2} />
-                    <TextAreaField label="Deskripsi Lengkap" name="full_description" value={generalData.full_description} onChange={handleGeneralChange} rows={5} />
-                  </div>
-
-                  {/* Read Only Stats */}
-                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <span className="text-xs text-blue-600 font-bold uppercase">Total Terjual</span>
-                      <p className="text-lg font-mono font-medium text-blue-900">{generalData.sold_count_total || 0}</p>
-                    </div>
-                    <div className="bg-yellow-50 p-3 rounded-lg">
-                      <span className="text-xs text-yellow-600 font-bold uppercase">Rating</span>
-                      <p className="text-lg font-mono font-medium text-yellow-900">{generalData.rating || '-'}</p>
-                    </div>
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      <span className="text-xs text-gray-500 font-bold uppercase">Dibuat Pada</span>
-                      <p className="text-xs font-mono text-gray-700 mt-1">{generalData.created_at ? new Date(generalData.created_at).toLocaleDateString('id-ID') : '-'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* === TAB: IMAGES === */}
-              {activeTab === 'images' && (
-                <div className="space-y-6">
-                  {/* Group 1: General Gallery (linked_color_name == null) */}
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider">Galeri Utama</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {images.filter(img => !img.linked_color_name).map((img) => (
-                        <div key={img.id} className="group relative aspect-square bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                          <img src={img.image_url} alt="Product" className="w-full h-full object-cover" />
-                          <div className="absolute bottom-0 left-0 right-0 bg-white p-2 border-t text-xs font-mono text-center truncate">
-                            Gambar Umum
-                          </div>
+            <div className="w-full h-full relative">
+              
+              {/* === NON-VARIANT TABS === */}
+              {activeTab !== 'variants' && (
+                <div className="h-full overflow-y-auto p-6">
+                   {/* TAB GENERAL */}
+                  {activeTab === 'general' && (
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2">
+                          <InputField label="Nama Produk" name="name" value={generalData.name} onChange={handleGeneralChange} />
                         </div>
-                      ))}
-                      {/* Tombol tambah dummy */}
-                      <button type="button" onClick={() => { alert("Fitur Sedang Dalam Tahap Pengembangan") }} className="aspect-square rounded-xl cursor-not-allowed border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-all">
-                        <Plus size={24} />
-                        <span className="text-xs font-medium mt-2">Upload</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Group 2: Color Linked (linked_color_name != null) */}
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider">Linked Varian Colors</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {images.filter(img => img.linked_color_name).map((img) => (
-                        <div key={img.id} className="group relative aspect-square bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                          <img src={img.image_url} alt={img.linked_color_name} className="w-full h-full object-cover" />
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-2 text-xs font-bold text-center text-white">
-                            {img.linked_color_name}
-                          </div>
+                        <div>
+                          <InputField label="Badge Label" name="badge" value={generalData.badge || ''} onChange={handleGeneralChange} />
                         </div>
-                      ))}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <CheckboxField label="New Arrival" checked={generalData.is_new_arrival} onChange={(val) => setGeneralData(prev => ({ ...prev, is_new_arrival: val }))} />
+                        <CheckboxField label="Featured" checked={generalData.is_featured} onChange={(val) => setGeneralData(prev => ({ ...prev, is_featured: val }))} />
+                      </div>
+                      <div className="grid grid-cols-1 gap-6">
+                        <TextAreaField label="Deskripsi Singkat" name="description" value={generalData.description} onChange={handleGeneralChange} rows={2} />
+                        <TextAreaField label="Deskripsi Lengkap" name="full_description" value={generalData.full_description} onChange={handleGeneralChange} rows={5} />
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      * Gambar ini akan otomatis muncul di tabel varian berdasarkan nama warna.
-                    </p>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* === TAB: VARIANTS === */}
-              {activeTab === 'variants' && (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3 w-16 text-center">Img</th>
-                          <th className="px-4 py-3">Warna</th>
-                          <th className="px-4 py-3 w-24">Size</th>
-                          <th className="px-4 py-3 min-w-[140px]">Harga (IDR)</th>
-                          <th className="px-4 py-3 min-w-[140px]">Harga Asli</th>
-                          <th className="px-4 py-3 w-24">Stok</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {variants.map((variant) => {
-                          // AUTO MATCH IMAGE BASED ON COLOR
-                          const variantImg = getVariantImage(variant.color_name);
+                  {/* TAB IMAGES */}
+                  {activeTab === 'images' && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                          {images.map((img) => (
+                            <div key={img.id} className="group relative aspect-square bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                              <img src={img.image_url} alt="Product" className="w-full h-full object-cover" />
+                              {img.linked_color_name && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-1 text-xs font-bold text-center text-white">
+                                  {img.linked_color_name}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-4 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-100">
+                             💡 Untuk menambah gambar baru, silakan gunakan menu "Varian & Harga" "Tambah Varian Baru". Gambar akan otomatis masuk ke sini.
+                        </div>
+                    </div>
+                  )}
 
-                          return (
-                            <tr key={variant.id} className="hover:bg-gray-50 group">
-                              {/* COL 1: IMAGE PREVIEW */}
-                              <td className="px-4 py-3">
-                                <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
-                                  {variantImg ? (
-                                    <img src={variantImg} alt={variant.color_name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <ImageIcon size={16} className="text-gray-300" />
-                                  )}
-                                </div>
-                              </td>
-                              {/* COL 2: COLOR */}
-                              <td className="px-4 py-3 font-medium text-gray-900">
-                                {variant.color_name}
-                              </td>
-                              {/* COL 3: SIZE */}
-                              <td className="px-4 py-3">
-                                <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                                  {variant.size_name}
-                                </div>
-                              </td>
-                              {/* COL 4: PRICE */}
-                              <td className="px-4 py-3">
-                                <input
-                                  type="text"
-                                  inputMode='numeric'
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:border-black outline-none text-right font-mono text-sm"
-                                  value={variant.price}
-                                  onChange={(e) => {
-                                    const onlyNum = e.target.value.replace(/[^0-9]/g, "");
-                                    handleVariantChange(variant.id, "price", onlyNum);
-                                  }}
-                                />
-                              </td>
-                              {/* COL 5: ORIGINAL PRICE */}
-                              <td className="px-4 py-3">
-                                <input
-                                  type="text"
-                                  inputMode='numeric'
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:border-black outline-none text-right font-mono text-sm text-gray-500"
-                                  value={variant.original_price || 0}
-                                  onChange={(e) => {
-                                    const onlyNum = e.target.value.replace(/[^0-9]/g, "");
-                                    handleVariantChange(variant.id, "original_price", onlyNum);
-                                  }}
-                                />
-                              </td>
-                              {/* COL 6: STOCK */}
-                              <td className="px-4 py-3">
-                                <input
-                                  type="text"
-                                  inputMode='numeric'
-                                  className={`w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-black outline-none text-center font-mono text-sm ${variant.stock < 10 ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-300'
-                                    }`}
-                                  value={variant.stock}
-                                  onChange={(e) => {
-                                    const onlyNum = e.target.value.replace(/[^0-9]/g, "");
-                                    handleVariantChange(variant.id, "stock", onlyNum);
-                                  }}
-                                />
-                              </td>
+                  {/* TAB SPECS */}
+                  {activeTab === 'specs' && (
+                    <div className="space-y-4">
+                      <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
+                            <tr>
+                              <th className="px-6 py-3 w-1/3">Nama Spesifikasi</th>
+                              <th className="px-6 py-3">Nilai</th>
+                              <th className="px-4 py-3 w-16"></th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {specifications.map((spec) => (
+                              <tr key={spec.id} className="group hover:bg-gray-50">
+                                <td className="px-6 py-2"><input className="w-full bg-transparent border-b border-transparent focus:border-black outline-none py-1" value={spec.spec_name} onChange={(e) => handleSpecChange(spec.id, 'spec_name', e.target.value)} /></td>
+                                <td className="px-6 py-2"><input className="w-full bg-transparent border-b border-transparent focus:border-black outline-none py-1" value={spec.spec_value} onChange={(e) => handleSpecChange(spec.id, 'spec_value', e.target.value)} /></td>
+                                <td className="px-4 py-2 text-right"><button type="button" onClick={() => removeSpec(spec.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={16} /></button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <button type="button" onClick={addSpec} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"><Plus size={16} /> Tambah Spesifikasi</button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* === TAB: SPECIFICATIONS === */}
-              {activeTab === 'specs' && (
-                <div className="space-y-4">
-                  <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
-                        <tr>
-                          <th className="px-6 py-3 w-1/3">Nama Spesifikasi</th>
-                          <th className="px-6 py-3">Nilai</th>
-                          <th className="px-4 py-3 w-16"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {specifications.map((spec) => (
-                          <tr key={spec.id} className="group hover:bg-gray-50">
-                            <td className="px-6 py-2">
-                              <input
-                                className="w-full bg-transparent border-b border-transparent focus:border-black outline-none py-1"
-                                value={spec.spec_name}
-                                placeholder="Contoh: Bahan"
-                                onChange={(e) => handleSpecChange(spec.id, 'spec_name', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-6 py-2">
-                              <input
-                                className="w-full bg-transparent border-b border-transparent focus:border-black outline-none py-1"
-                                value={spec.spec_value}
-                                placeholder="Contoh: Katun 100%"
-                                onChange={(e) => handleSpecChange(spec.id, 'spec_value', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => removeSpec(spec.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                        {specifications.length === 0 && (
-                          <tr>
-                            <td colSpan={3} className="px-6 py-8 text-center text-gray-400 italic">
-                              Belum ada spesifikasi
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+              {/* === TAB VARIANTS: SLIDER CONTAINER === */}
+              {activeTab === 'variants' && (
+                <div className={`flex w-[200%] h-full transition-transform duration-500 ease-in-out ${isAddingVariantMode ? '-translate-x-1/2' : 'translate-x-0'}`}>
+                  
+                  {/* --- PAGE 1: LIST VIEW (GROUPED) --- */}
+                  <div className="w-1/2 h-full overflow-y-auto p-6">
+                    <div className="space-y-6">
+                      {Object.keys(groupedVariants).length === 0 ? (
+                          <div className="text-center py-10 text-gray-400">Belum ada varian. Klik tombol di bawah untuk menambah.</div>
+                      ) : (
+                        Object.entries(groupedVariants).map(([colorName, groupItems], idx) => {
+                          const variantImg = getVariantImage(colorName);
+                          return (
+                            <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                              {/* Group Header */}
+                              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                                   {variantImg ? <img src={variantImg} className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-gray-300" />}
+                                </div>
+                                <div className="flex-1">
+                                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Nama Warna / Varian</label>
+                                  <input 
+                                    type="text" 
+                                    className="block w-full bg-transparent font-bold text-gray-900 border-b border-transparent focus:border-black outline-none focus:bg-white transition-all px-1 -ml-1"
+                                    value={colorName}
+                                    onChange={(e) => handleUpdateGroupName(colorName, e.target.value)}
+                                  />
+                                </div>
+                                <div className="text-xs text-gray-400 font-mono bg-white px-2 py-1 rounded border">
+                                  {groupItems.length} Sizes
+                                </div>
+                              </div>
+
+                              {/* Group Items Table */}
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                  <thead className="bg-white text-gray-500 text-xs uppercase border-b border-gray-100">
+                                    <tr>
+                                      <th className="px-4 py-2 w-20">Size</th>
+                                      <th className="px-4 py-2">Harga Jual</th>
+                                      <th className="px-4 py-2">Harga Asli</th>
+                                      <th className="px-4 py-2 w-20">Stok</th>
+                                      <th className="px-4 py-2 w-10"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-50">
+                                    {groupItems.map((v) => (
+                                      <tr key={v.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2">
+                                          <input 
+                                            className="w-full bg-transparent text-center font-medium border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
+                                            value={v.size_name}
+                                            onChange={(e) => handleVariantChange(v.id, 'size_name', e.target.value)}
+                                            placeholder="Size"
+                                          />
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          <input 
+                                            className="w-full bg-transparent text-right font-mono text-gray-900 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
+                                            value={v.price}
+                                            onChange={(e) => handleVariantChange(v.id, 'price', e.target.value.replace(/\D/g,''))}
+                                          />
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          <input 
+                                            className="w-full bg-transparent text-right font-mono text-gray-400 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
+                                            value={v.original_price}
+                                            onChange={(e) => handleVariantChange(v.id, 'original_price', e.target.value.replace(/\D/g,''))}
+                                          />
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          <input 
+                                            className={`w-full bg-transparent text-center font-mono border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none ${v.stock < 10 ? 'text-red-600 font-bold' : ''}`} 
+                                            value={v.stock}
+                                            onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value.replace(/\D/g,''))}
+                                          />
+                                        </td>
+                                        <td className="px-4 py-2 text-right">
+                                          <button onClick={() => removeVariant(v.id)} className="text-gray-300 hover:text-red-500 transition-colors"><X size={14}/></button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    {/* Quick Add Size Row */}
+                                    <tr>
+                                      <td colSpan={5} className="px-2 py-1">
+                                        <button 
+                                          type="button"
+                                          onClick={() => addSizeToGroup(colorName)}
+                                          className="w-full py-1 text-xs text-center text-gray-400 hover:text-black hover:bg-gray-50 border border-dashed border-gray-200 hover:border-gray-300 rounded transition-all"
+                                        >
+                                          + Tambah Size ke {colorName}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addSpec}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
-                  >
-                    <Plus size={16} />
-                    Tambah Spesifikasi
-                  </button>
+
+                  {/* --- PAGE 2: ADD NEW VARIANT FORM --- */}
+                  <div className="w-1/2 h-full overflow-y-auto p-6 bg-gray-50">
+                    <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[500px] flex flex-col">
+                      {/* Header Page 2 */}
+                      <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+                        <button type="button" onClick={() => setIsAddingVariantMode(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                          <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">Tambah Varian Baru</h3>
+                          <p className="text-sm text-gray-500">Buat grup warna baru dan tambahkan ukuran</p>
+                        </div>
+                      </div>
+
+                      {/* Form Content */}
+                      <div className="space-y-6 flex-1">
+                        
+                        <div className="flex gap-6">
+                           {/* Upload Real */}
+                           <div className="w-32 shrink-0">
+                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Foto Varian</label>
+                              <label className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-black hover:text-black cursor-pointer transition-colors group overflow-hidden relative">
+                                {newVariantFile ? (
+                                    <img src={URL.createObjectURL(newVariantFile)} className="w-full h-full object-cover absolute inset-0" />
+                                ) : (
+                                    <>
+                                        <UploadCloud size={24} className="mb-2 group-hover:scale-110 transition-transform"/>
+                                        <span className="text-[10px] text-center px-2">Upload</span>
+                                    </>
+                                )}
+                                <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                              </label>
+                           </div>
+                           
+                           {/* Color Input */}
+                           <div className="flex-1">
+                              <InputField 
+                                label="Nama Warna (Grup)" 
+                                placeholder="Contoh: Merah Maroon" 
+                                value={newVariantForm.color_name}
+                                onChange={(e) => setNewVariantForm({...newVariantForm, color_name: e.target.value})}
+                              />
+                              <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-100">
+                                💡 Tip: Menambahkan banyak ukuran sekaligus akan membuat stok manajemen lebih rapi.
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Dynamic Size List */}
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Daftar Ukuran & Harga</label>
+                             <button type="button" onClick={addNewItemRow} className="text-xs font-bold text-blue-600 hover:underline">+ Baris Baru</button>
+                          </div>
+                          
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                                <tr>
+                                  <th className="px-3 py-2 text-left">Size</th>
+                                  <th className="px-3 py-2 text-right">Harga Jual</th>
+                                  <th className="px-3 py-2 text-right">Harga Coret</th>
+                                  <th className="px-3 py-2 text-center">Stok</th>
+                                  <th className="px-2 py-2 w-8"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {newVariantForm.items.map((item, idx) => (
+                                  <tr key={item.id} className="bg-white">
+                                    <td className="p-2">
+                                      <input 
+                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none"
+                                        placeholder="S/M/L"
+                                        value={item.size_name}
+                                        onChange={(e) => handleNewVariantItemChange(item.id, 'size_name', e.target.value)}
+                                      />
+                                    </td>
+                                    <td className="p-2">
+                                      <input 
+                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono"
+                                        placeholder="0"
+                                        value={item.price}
+                                        onChange={(e) => handleNewVariantItemChange(item.id, 'price', e.target.value.replace(/\D/g,''))}
+                                      />
+                                    </td>
+                                    <td className="p-2">
+                                      <input 
+                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono text-gray-500"
+                                        placeholder="0"
+                                        value={item.original_price}
+                                        onChange={(e) => handleNewVariantItemChange(item.id, 'original_price', e.target.value.replace(/\D/g,''))}
+                                      />
+                                    </td>
+                                    <td className="p-2">
+                                      <input 
+                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-center font-mono"
+                                        placeholder="0"
+                                        value={item.stock}
+                                        onChange={(e) => handleNewVariantItemChange(item.id, 'stock', e.target.value.replace(/\D/g,''))}
+                                      />
+                                    </td>
+                                    <td className="p-2 text-center">
+                                      <button type="button" onClick={() => removeNewItemRow(item.id)} disabled={newVariantForm.items.length <= 1} className="text-gray-400 hover:text-red-500 disabled:opacity-30">
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Footer Page 2 */}
+                      <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
+                          <button type="button" onClick={() => setIsAddingVariantMode(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
+                          <button 
+                            type="button" 
+                            onClick={saveNewVariantGroup}
+                            disabled={isSaving}
+                            className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isSaving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save size={16}/>} Simpan Varian
+                          </button>
+                      </div>
+
+                    </div>
+                  </div>
+
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 
-        <ModalFooter>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-sm disabled:opacity-50"
-          >
-            Batal
-          </button>
+        {/* MODAL FOOTER (Hidden on Add Variant Mode to avoid confusion) */}
+        {!isAddingVariantMode && (
+          <ModalFooter>
+              {/* NEW BUTTON LOCATION */}
+              {activeTab === 'variants' && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddVariant} // Panggil handler reset
+                  className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 font-medium text-sm flex items-center gap-2 mr-auto"
+                >
+                  <Plus size={16} />
+                  Tambah Varian Baru
+                </button>
+              )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 shadow-lg shadow-black/20 font-medium text-sm flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Menyimpan...
-              </>
-            ) : (
-              <>
-                <Save size={16} /> {/* Ganti icon Check dengan Save agar lebih relevan */}
-                Simpan Perubahan
-              </>
-            )}
-          </button>
-        </ModalFooter>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-sm disabled:opacity-50"
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 shadow-lg shadow-black/20 font-medium text-sm flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Simpan Perubahan
+                </>
+              )}
+            </button>
+          </ModalFooter>
+        )}
       </form>
     </ModalWrapper>
   );

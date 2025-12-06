@@ -34,23 +34,24 @@ export async function sendTelegramNotification(orderData) {
   const message = `
 🚨 *PESANAN BARU MASUK!* 🚨
 
-✨ *Wei Kak Adliii~ Ada Orderan Baru Masuk!* ✨
+Hallo Kak Adli~ Ada Orderan Baru Masuk!
+Sistem menerima pesanan baru yang perlu diproses. Berikut detailnya:
 
+📦 INFORMASI PESANAN
 🆔 *Order ID:* #${orderId.substring(0, 8)}
 👤 *Pembeli:* ${customerName}
 💰 *Total:* Rp${totalAmount.toLocaleString('id-ID')}
 💳 *Metode:* ${paymentMethod}
 ⁉️ *Status:* ${statusText} 
 
-📍 *Alamat:*
+📍 Alamat:
 ${address}
 
-🛒 *Detail Barang:*
+🛒 Detail Barang:
 ${itemsList}
 
-----------------------------------
-✅ Hiyori lapor yaa Kak… 😮‍💨 
-Ayo segera diproses biar customer senang ✨
+---------------------------------- 
+Mohon segera proses pesanan ini melalui Dashboard Admin. Terima kasih.
   `.trim();
 
   try {
