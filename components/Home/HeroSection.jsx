@@ -147,7 +147,7 @@ const HeroSection = () => {
           {/* Badge */}
           <motion.div variants={fadeInUp} className="flex items-center gap-3 mb-6">
             <span className="h-px w-12 bg-purple-600 dark:bg-purple-400"></span>
-            <span className="text-purple-700 dark:text-purple-300 uppercase tracking-[0.2em] text-xs font-bold">Est. 2021</span>
+            <span className="text-purple-700 dark:text-purple-300 uppercase tracking-[0.2em] text-xs font-bold">Offmode Store</span>
           </motion.div>
 
           {/* Headline Besar */}
@@ -205,7 +205,7 @@ const HeroSection = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-300 uppercase tracking-wider">Featured</p>
-                    <p className="font-bold text-sm text-gray-900 dark:text-white">Urban Jacket V2</p>
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">Essential Wear</p>
                   </div>
                </motion.div>
             </motion.div>
