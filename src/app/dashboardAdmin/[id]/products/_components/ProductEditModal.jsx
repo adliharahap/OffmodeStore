@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, Check, Loader2, Plus, Trash2, Image as ImageIcon, 
-  Tag, Box, Layers, Save, ArrowLeft, UploadCloud 
+  Tag, Box, Layers, Save, ArrowLeft, UploadCloud, Edit 
 } from 'lucide-react';
 
 // IMPORT SERVER ACTIONS ASLI
 import { getProductDataById, updateProductFullData } from '../../../../../../utils/getProductDataAction';
 import { supabase } from '../../../../../../lib/supabaseClient';
+
 // --- UI COMPONENTS ---
 
 const ModalWrapper = ({ children, onClose }) => (
@@ -76,11 +77,15 @@ export default function ProductEditModal({ product, onClose, onSave }) {
 
   // State untuk Fitur Tambah Varian Baru
   const [isAddingVariantMode, setIsAddingVariantMode] = useState(false);
-  const [newVariantFile, setNewVariantFile] = useState(null); // File gambar varian baru
+  const [newVariantFile, setNewVariantFile] = useState(null); 
   const [newVariantForm, setNewVariantForm] = useState({
     color_name: '',
     items: [{ id: 'temp-1', size_name: '', price: 0, original_price: 0, stock: 0 }]
   });
+
+  // State Loading saat ganti gambar per warna (untuk visual feedback)
+  // Walaupun uploadnya di akhir, state ini bisa dipakai untuk validasi jika perlu
+  const [uploadingColor, setUploadingColor] = useState(null);
 
   // Data States
   const [generalData, setGeneralData] = useState({
@@ -89,9 +94,15 @@ export default function ProductEditModal({ product, onClose, onSave }) {
   });
   const [variants, setVariants] = useState([]);
   const [specifications, setSpecifications] = useState([]);
+  
+  // STATE IMAGES (Diubah sedikit cara kerjanya nanti)
   const [images, setImages] = useState([]);
 
-  // 1. FETCH DATA (Menggunakan Server Action Asli)
+  // STATE BARU: Menyimpan file pengganti sementara
+  // Format: { [colorName]: File }
+  const [replacedImages, setReplacedImages] = useState({});
+
+  // 1. FETCH DATA 
   useEffect(() => {
     const fetchData = async () => {
       if (!product?.id) return;
@@ -126,15 +137,9 @@ export default function ProductEditModal({ product, onClose, onSave }) {
     fetchData();
   }, [product?.id]);
 
-  // --- HELPER: Ambil harga default dari varian yang sudah ada ---
-  const getDefaultPrice = () => {
-    if (variants.length > 0) return variants[0].price;
-    return 0;
-  };
-  const getDefaultOriginalPrice = () => {
-    if (variants.length > 0) return variants[0].original_price;
-    return 0;
-  };
+  // --- HELPER ---
+  const getDefaultPrice = () => variants.length > 0 ? variants[0].price : 0;
+  const getDefaultOriginalPrice = () => variants.length > 0 ? variants[0].original_price : 0;
 
   // --- HANDLERS GENERIC ---
   const handleGeneralChange = (e) => {
@@ -159,18 +164,9 @@ export default function ProductEditModal({ product, onClose, onSave }) {
     }
   };
 
-const handleUpdateGroupName = (oldName, newName) => {
-    // 1. Update nama warna di variants
+  const handleUpdateGroupName = (oldName, newName) => {
     setVariants(prev => prev.map(v => v.color_name === oldName ? { ...v, color_name: newName } : v));
-    
-    // 2. UPDATE JUGA di images (Sync Realtime)
-    setImages(prev => prev.map(img => 
-      img.linked_color_name === oldName 
-        ? { ...img, linked_color_name: newName } 
-        : img
-    ));
-    
-    // 3. Jika sedang dalam mode Add Variant, update form juga
+    setImages(prev => prev.map(img => img.linked_color_name === oldName ? { ...img, linked_color_name: newName } : img));
     if (isAddingVariantMode && newVariantForm.color_name === oldName) {
         setNewVariantForm(prev => ({ ...prev, color_name: newName }));
     }
@@ -182,24 +178,54 @@ const handleUpdateGroupName = (oldName, newName) => {
       product_id: product?.id,
       color_name: colorName,
       size_name: '',
-      price: getDefaultPrice(), // Auto fill price
+      price: getDefaultPrice(),
       original_price: getDefaultOriginalPrice(),
       stock: 0
     };
     setVariants(prev => [...prev, newVariant]);
   };
 
+  // --- FEATURE: REPLACE IMAGE (LOGIKA BARU: PREVIEW ONLY) ---
+  const handleReplaceVariantImage = (e, colorName) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 1. Simpan File di State Sementara
+    setReplacedImages(prev => ({ ...prev, [colorName]: file }));
+
+    // 2. Buat Preview URL (Blob) untuk UI
+    const previewUrl = URL.createObjectURL(file);
+
+    // 3. Update State Images (Hanya Tampilan)
+    setImages(prev => {
+        // Cek apakah sudah ada gambar untuk warna ini
+        const exists = prev.find(img => img.linked_color_name === colorName);
+        
+        if (exists) {
+            // Update URL gambar lama dengan preview baru
+            return prev.map(img => 
+                img.linked_color_name === colorName 
+                ? { ...img, image_url: previewUrl, isTempPreview: true } // Tandai sebagai preview
+                : img
+            );
+        } else {
+            // Jika belum ada, tambah placeholder baru
+            return [...prev, {
+                id: `temp-preview-${Date.now()}`,
+                product_id: product?.id,
+                image_url: previewUrl,
+                linked_color_name: colorName,
+                isTempPreview: true
+            }];
+        }
+    });
+  };
+
   // --- HANDLERS NEW VARIANT FORM (PAGE 2) ---
   const handleOpenAddVariant = () => {
-    // Reset form dengan harga default
     setNewVariantForm({
       color_name: '',
-      items: [{ 
-          id: 'temp-1', size_name: '', 
-          price: getDefaultPrice(), 
-          original_price: getDefaultOriginalPrice(), 
-          stock: 0 
-      }]
+      items: [{ id: 'temp-1', size_name: '', price: getDefaultPrice(), original_price: getDefaultOriginalPrice(), stock: 0 }]
     });
     setNewVariantFile(null);
     setIsAddingVariantMode(true);
@@ -215,21 +241,13 @@ const handleUpdateGroupName = (oldName, newName) => {
   const addNewItemRow = () => {
     setNewVariantForm(prev => ({
       ...prev,
-      items: [...prev.items, { 
-          id: `temp-${Date.now()}`, size_name: '', 
-          price: getDefaultPrice(), 
-          original_price: getDefaultOriginalPrice(), 
-          stock: 0 
-      }]
+      items: [...prev.items, { id: `temp-${Date.now()}`, size_name: '', price: getDefaultPrice(), original_price: getDefaultOriginalPrice(), stock: 0 }]
     }));
   };
 
   const removeNewItemRow = (itemId) => {
     if (newVariantForm.items.length > 1) {
-      setNewVariantForm(prev => ({
-        ...prev,
-        items: prev.items.filter(item => item.id !== itemId)
-      }));
+      setNewVariantForm(prev => ({ ...prev, items: prev.items.filter(item => item.id !== itemId) }));
     }
   };
 
@@ -243,26 +261,15 @@ const handleUpdateGroupName = (oldName, newName) => {
       alert("Nama warna harus diisi!");
       return;
     }
-
-    setIsSaving(true); // Show loading indicator on button
-
+    setIsSaving(true);
     try {
-      // 1. Upload Gambar (Jika ada)
       if (newVariantFile) {
         const fileName = `${product.id}-${Date.now()}-${newVariantFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         const filePath = `products/${product.id}/${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('product_images')
-          .upload(filePath, newVariantFile);
-
+        const { error: uploadError } = await supabase.storage.from('product_images').upload(filePath, newVariantFile);
         if (uploadError) throw new Error("Gagal upload gambar: " + uploadError.message);
-
-        const { data: urlData } = supabase.storage
-          .from('product_images')
-          .getPublicUrl(filePath);
-
-        // Tambahkan ke state images agar langsung muncul
+        
+        const { data: urlData } = supabase.storage.from('product_images').getPublicUrl(filePath);
         setImages(prev => [...prev, {
            id: `new-img-${Date.now()}`,
            product_id: product.id,
@@ -271,7 +278,6 @@ const handleUpdateGroupName = (oldName, newName) => {
         }]);
       }
 
-      // 2. Tambahkan Varian ke State Utama
       const newVariantsToAdd = newVariantForm.items.map(item => ({
         id: `new-${Date.now()}-${Math.random()}`,
         product_id: product?.id,
@@ -283,10 +289,7 @@ const handleUpdateGroupName = (oldName, newName) => {
       }));
 
       setVariants(prev => [...prev, ...newVariantsToAdd]);
-      
-      // 3. Reset & Kembali
       setIsAddingVariantMode(false);
-
     } catch (error) {
       console.error(error);
       alert(error.message);
@@ -299,7 +302,50 @@ const handleUpdateGroupName = (oldName, newName) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
+    
     try {
+      // A. PROSES GAMBAR PENGGANTI (REPLACED IMAGES)
+      const finalImages = [...images];
+
+      for (const [colorName, file] of Object.entries(replacedImages)) {
+         console.log(`Mengupload gambar baru untuk warna: ${colorName}...`);
+         
+         const fileExt = file.name.split('.').pop();
+         const fileName = `${product.id}-${Date.now()}-${colorName.replace(/\s+/g, '_')}.${fileExt}`;
+         const filePath = `products/${product.id}/${fileName}`;
+
+         // 1. Upload ke Storage
+         const { error: uploadError } = await supabase.storage
+            .from('product_images')
+            .upload(filePath, file, { upsert: true });
+
+         if (uploadError) throw new Error(`Gagal upload gambar (${colorName}): ${uploadError.message}`);
+
+         // 2. Dapatkan URL Publik
+         const { data: urlData } = supabase.storage
+            .from('product_images')
+            .getPublicUrl(filePath);
+        
+         const publicUrl = urlData.publicUrl;
+
+         // 3. Update array finalImages dengan URL asli
+         const imgIndex = finalImages.findIndex(img => img.linked_color_name === colorName);
+         
+         if (imgIndex !== -1) {
+            const oldImg = finalImages[imgIndex];
+            if (oldImg.image_url && !oldImg.isTempPreview && oldImg.image_url.includes('product_images')) {
+                 const oldPath = oldImg.image_url.split('/product_images/')[1];
+                 if(oldPath) await supabase.storage.from('product_images').remove([oldPath]);
+            }
+
+            finalImages[imgIndex] = {
+                ...finalImages[imgIndex],
+                image_url: publicUrl,
+                isTempPreview: undefined // Hapus flag preview
+            };
+         }
+      }
+
       const payload = {
         name: generalData.name,
         description: generalData.description,
@@ -307,8 +353,6 @@ const handleUpdateGroupName = (oldName, newName) => {
         badge: generalData.badge,
         is_new_arrival: generalData.is_new_arrival,
         is_featured: generalData.is_featured,
-        
-        // Kirim varian yang sudah di-edit/tambah
         variants: variants.map(v => ({
           id: v.id,
           product_id: product?.id,
@@ -318,19 +362,14 @@ const handleUpdateGroupName = (oldName, newName) => {
           color_name: v.color_name, 
           size_name: v.size_name
         })),
-        
-        // Kirim spesifikasi
         specifications: specifications.map(s => ({ id: s.id, spec_name: s.spec_name, spec_value: s.spec_value })),
-
-        // Kirim gambar (terutama yang baru diupload lewat Add Variant)
-        // Server action harus handle insert gambar baru yang ID-nya 'new-...'
-        images: images 
+        images: finalImages // Gunakan array gambar yang sudah di-update URL-nya
       };
 
       const result = await updateProductFullData(product?.id, payload);
 
       if (result.success) {
-        alert("✅ Produk berhasil diperbarui!");
+        alert("Produk berhasil diperbarui!");
         if (onSave) onSave(result);
         if (onClose) onClose();
       } else {
@@ -344,14 +383,12 @@ const handleUpdateGroupName = (oldName, newName) => {
     }
   };
 
-  // --- HELPER: GROUP VARIANTS BY COLOR ---
+  // --- HELPER: GROUP VARIANTS ---
   const groupedVariants = useMemo(() => {
     const groups = {};
     variants.forEach(variant => {
       const colorKey = variant.color_name || 'Tanpa Warna';
-      if (!groups[colorKey]) {
-        groups[colorKey] = [];
-      }
+      if (!groups[colorKey]) groups[colorKey] = [];
       groups[colorKey].push(variant);
     });
     return groups;
@@ -379,15 +416,11 @@ const handleUpdateGroupName = (oldName, newName) => {
             ].map(tab => (
               <button
                 key={tab.id}
-                type="button"
+                type="button" 
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                  ? 'border-black text-black'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
-                  }`}
+                className={`flex items-center gap-2 py-4 px-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
               >
-                <tab.icon size={16} />
-                {tab.label}
+                <tab.icon size={16} /> {tab.label}
               </button>
             ))}
           </div>
@@ -403,19 +436,16 @@ const handleUpdateGroupName = (oldName, newName) => {
           ) : (
             <div className="w-full h-full relative">
               
-              {/* === NON-VARIANT TABS === */}
-              {activeTab !== 'variants' && (
+              {/* ... (Tab General, Images, Specs TETAP SAMA) ... */}
+              {/* Salin dari kode sebelumnya untuk tab General, Images, dan Specs */}
+              {/* Saya ringkas di sini agar fokus ke bagian Variants yang error */}
+               
+               {activeTab === 'general' && (
                 <div className="h-full overflow-y-auto p-6">
-                   {/* TAB GENERAL */}
-                  {activeTab === 'general' && (
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2">
-                          <InputField label="Nama Produk" name="name" value={generalData.name} onChange={handleGeneralChange} />
-                        </div>
-                        <div>
-                          <InputField label="Badge Label" name="badge" value={generalData.badge || ''} onChange={handleGeneralChange} />
-                        </div>
+                        <div className="md:col-span-2"><InputField label="Nama Produk" name="name" value={generalData.name} onChange={handleGeneralChange} /></div>
+                        <div><InputField label="Badge Label" name="badge" value={generalData.badge || ''} onChange={handleGeneralChange} /></div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
                         <CheckboxField label="New Arrival" checked={generalData.is_new_arrival} onChange={(val) => setGeneralData(prev => ({ ...prev, is_new_arrival: val }))} />
@@ -426,10 +456,10 @@ const handleUpdateGroupName = (oldName, newName) => {
                         <TextAreaField label="Deskripsi Lengkap" name="full_description" value={generalData.full_description} onChange={handleGeneralChange} rows={5} />
                       </div>
                     </div>
-                  )}
-
-                  {/* TAB IMAGES */}
-                  {activeTab === 'images' && (
+                </div>
+              )}
+               {activeTab === 'images' && (
+                    <div className="h-full overflow-y-auto p-6">
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                           {images.map((img) => (
@@ -447,10 +477,12 @@ const handleUpdateGroupName = (oldName, newName) => {
                              💡 Untuk menambah gambar baru, silakan gunakan menu "Varian & Harga" "Tambah Varian Baru". Gambar akan otomatis masuk ke sini.
                         </div>
                     </div>
+                    </div>
                   )}
 
                   {/* TAB SPECS */}
                   {activeTab === 'specs' && (
+                    <div className="h-full overflow-y-auto p-6">
                     <div className="space-y-4">
                       <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <table className="w-full text-sm text-left">
@@ -474,11 +506,9 @@ const handleUpdateGroupName = (oldName, newName) => {
                       </div>
                       <button type="button" onClick={addSpec} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"><Plus size={16} /> Tambah Spesifikasi</button>
                     </div>
+                    </div>
                   )}
-                </div>
-              )}
 
-              {/* === TAB VARIANTS: SLIDER CONTAINER === */}
               {activeTab === 'variants' && (
                 <div className={`flex w-[200%] h-full transition-transform duration-500 ease-in-out ${isAddingVariantMode ? '-translate-x-1/2' : 'translate-x-0'}`}>
                   
@@ -490,13 +520,48 @@ const handleUpdateGroupName = (oldName, newName) => {
                       ) : (
                         Object.entries(groupedVariants).map(([colorName, groupItems], idx) => {
                           const variantImg = getVariantImage(colorName);
+                          // Cek apakah gambar sedang diupload untuk grup warna ini
+                          const isUploadingThis = uploadingColor === colorName;
+
                           return (
                             <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                               {/* Group Header */}
                               <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
-                                   {variantImg ? <img src={variantImg} className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-gray-300" />}
+                                
+                                {/* IMAGE UPLOAD AREA (FITUR BARU & FIX) */}
+                                <div className="relative group/img cursor-pointer w-12 h-12 shrink-0">
+                                  <div className="w-full h-full rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden relative">
+                                     {variantImg ? (
+                                         <img src={variantImg} className={`w-full h-full object-cover transition-opacity ${isUploadingThis ? 'opacity-50' : ''}`} />
+                                     ) : (
+                                         <ImageIcon size={20} className="text-gray-300" />
+                                     )}
+                                     
+                                     {/* Loading Spinner */}
+                                     {isUploadingThis && (
+                                         <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                                             <Loader2 className="w-5 h-5 animate-spin text-black" />
+                                         </div>
+                                     )}
+
+                                     {/* Overlay Edit */}
+                                     {!isUploadingThis && (
+                                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity rounded-lg">
+                                           <Edit size={16} className="text-white" />
+                                       </div>
+                                     )}
+                                  </div>
+                                  
+                                  {/* Hidden Input File */}
+                                  <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    disabled={!!isUploadingThis} // Disable saat loading
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                    onChange={(e) => handleReplaceVariantImage(e, colorName)}
+                                  />
                                 </div>
+
                                 <div className="flex-1">
                                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Nama Warna / Varian</label>
                                   <input 
@@ -527,49 +592,19 @@ const handleUpdateGroupName = (oldName, newName) => {
                                     {groupItems.map((v) => (
                                       <tr key={v.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-2">
-                                          <input 
-                                            className="w-full bg-transparent text-center font-medium border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
-                                            value={v.size_name}
-                                            onChange={(e) => handleVariantChange(v.id, 'size_name', e.target.value)}
-                                            placeholder="Size"
-                                          />
+                                          <input className="w-full bg-transparent text-center font-medium border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" value={v.size_name} onChange={(e) => handleVariantChange(v.id, 'size_name', e.target.value)} placeholder="Size" />
                                         </td>
-                                        <td className="px-4 py-2">
-                                          <input 
-                                            className="w-full bg-transparent text-right font-mono text-gray-900 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
-                                            value={v.price}
-                                            onChange={(e) => handleVariantChange(v.id, 'price', e.target.value.replace(/\D/g,''))}
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input 
-                                            className="w-full bg-transparent text-right font-mono text-gray-400 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" 
-                                            value={v.original_price}
-                                            onChange={(e) => handleVariantChange(v.id, 'original_price', e.target.value.replace(/\D/g,''))}
-                                          />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                          <input 
-                                            className={`w-full bg-transparent text-center font-mono border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none ${v.stock < 10 ? 'text-red-600 font-bold' : ''}`} 
-                                            value={v.stock}
-                                            onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value.replace(/\D/g,''))}
-                                          />
-                                        </td>
+                                        <td className="px-4 py-2"><input className="w-full bg-transparent text-right font-mono text-gray-900 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" value={v.price} onChange={(e) => handleVariantChange(v.id, 'price', e.target.value.replace(/\D/g,''))} /></td>
+                                        <td className="px-4 py-2"><input className="w-full bg-transparent text-right font-mono text-gray-400 border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none" value={v.original_price} onChange={(e) => handleVariantChange(v.id, 'original_price', e.target.value.replace(/\D/g,''))} /></td>
+                                        <td className="px-4 py-2"><input className={`w-full bg-transparent text-center font-mono border border-transparent hover:border-gray-200 focus:border-black focus:bg-white rounded px-1 py-0.5 outline-none ${v.stock < 10 ? 'text-red-600 font-bold' : ''}`} value={v.stock} onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value.replace(/\D/g,''))} /></td>
                                         <td className="px-4 py-2 text-right">
-                                          <button onClick={() => removeVariant(v.id)} className="text-gray-300 hover:text-red-500 transition-colors"><X size={14}/></button>
+                                          <button type="button" onClick={() => removeVariant(v.id)} className="text-gray-300 hover:text-red-500 transition-colors"><X size={14}/></button>
                                         </td>
                                       </tr>
                                     ))}
-                                    {/* Quick Add Size Row */}
                                     <tr>
                                       <td colSpan={5} className="px-2 py-1">
-                                        <button 
-                                          type="button"
-                                          onClick={() => addSizeToGroup(colorName)}
-                                          className="w-full py-1 text-xs text-center text-gray-400 hover:text-black hover:bg-gray-50 border border-dashed border-gray-200 hover:border-gray-300 rounded transition-all"
-                                        >
-                                          + Tambah Size ke {colorName}
-                                        </button>
+                                        <button type="button" onClick={() => addSizeToGroup(colorName)} className="w-full py-1 text-xs text-center text-gray-400 hover:text-black hover:bg-gray-50 border border-dashed border-gray-200 hover:border-gray-300 rounded transition-all">+ Tambah Size ke {colorName}</button>
                                       </td>
                                     </tr>
                                   </tbody>
@@ -651,43 +686,11 @@ const handleUpdateGroupName = (oldName, newName) => {
                               <tbody className="divide-y divide-gray-100">
                                 {newVariantForm.items.map((item, idx) => (
                                   <tr key={item.id} className="bg-white">
-                                    <td className="p-2">
-                                      <input 
-                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none"
-                                        placeholder="S/M/L"
-                                        value={item.size_name}
-                                        onChange={(e) => handleNewVariantItemChange(item.id, 'size_name', e.target.value)}
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      <input 
-                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono"
-                                        placeholder="0"
-                                        value={item.price}
-                                        onChange={(e) => handleNewVariantItemChange(item.id, 'price', e.target.value.replace(/\D/g,''))}
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      <input 
-                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono text-gray-500"
-                                        placeholder="0"
-                                        value={item.original_price}
-                                        onChange={(e) => handleNewVariantItemChange(item.id, 'original_price', e.target.value.replace(/\D/g,''))}
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      <input 
-                                        className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-center font-mono"
-                                        placeholder="0"
-                                        value={item.stock}
-                                        onChange={(e) => handleNewVariantItemChange(item.id, 'stock', e.target.value.replace(/\D/g,''))}
-                                      />
-                                    </td>
-                                    <td className="p-2 text-center">
-                                      <button type="button" onClick={() => removeNewItemRow(item.id)} disabled={newVariantForm.items.length <= 1} className="text-gray-400 hover:text-red-500 disabled:opacity-30">
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </td>
+                                    <td className="p-2"><input className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none" placeholder="S/M/L" value={item.size_name} onChange={(e) => handleNewVariantItemChange(item.id, 'size_name', e.target.value)} /></td>
+                                    <td className="p-2"><input className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono" placeholder="0" value={item.price} onChange={(e) => handleNewVariantItemChange(item.id, 'price', e.target.value.replace(/\D/g,''))} /></td>
+                                    <td className="p-2"><input className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-right font-mono text-gray-500" placeholder="0" value={item.original_price} onChange={(e) => handleNewVariantItemChange(item.id, 'original_price', e.target.value.replace(/\D/g,''))} /></td>
+                                    <td className="p-2"><input className="w-full border border-gray-300 rounded px-2 py-1.5 focus:border-black outline-none text-center font-mono" placeholder="0" value={item.stock} onChange={(e) => handleNewVariantItemChange(item.id, 'stock', e.target.value.replace(/\D/g,''))} /></td>
+                                    <td className="p-2 text-center"><button type="button" onClick={() => removeNewItemRow(item.id)} disabled={newVariantForm.items.length <= 1} className="text-gray-400 hover:text-red-500 disabled:opacity-30"><Trash2 size={16} /></button></td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -700,12 +703,7 @@ const handleUpdateGroupName = (oldName, newName) => {
                       {/* Footer Page 2 */}
                       <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
                           <button type="button" onClick={() => setIsAddingVariantMode(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
-                          <button 
-                            type="button" 
-                            onClick={saveNewVariantGroup}
-                            disabled={isSaving}
-                            className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 flex items-center gap-2 disabled:opacity-50"
-                          >
+                          <button type="button" onClick={saveNewVariantGroup} disabled={isSaving} className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 flex items-center gap-2 disabled:opacity-50">
                             {isSaving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save size={16}/>} Simpan Varian
                           </button>
                       </div>
@@ -719,46 +717,17 @@ const handleUpdateGroupName = (oldName, newName) => {
           )}
         </div>
 
-        {/* MODAL FOOTER (Hidden on Add Variant Mode to avoid confusion) */}
+        {/* MODAL FOOTER */}
         {!isAddingVariantMode && (
           <ModalFooter>
-              {/* NEW BUTTON LOCATION */}
               {activeTab === 'variants' && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddVariant} // Panggil handler reset
-                  className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 font-medium text-sm flex items-center gap-2 mr-auto"
-                >
-                  <Plus size={16} />
-                  Tambah Varian Baru
+                <button type="button" onClick={handleOpenAddVariant} className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 font-medium text-sm flex items-center gap-2 mr-auto">
+                  <Plus size={16} /> Tambah Varian Baru
                 </button>
               )}
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSaving}
-              className="px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-sm disabled:opacity-50"
-            >
-              Batal
-            </button>
-
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 shadow-lg shadow-black/20 font-medium text-sm flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Simpan Perubahan
-                </>
-              )}
+            <button type="button" onClick={onClose} disabled={isSaving} className="px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-sm disabled:opacity-50">Batal</button>
+            <button type="submit" disabled={isSaving} className="px-5 py-2.5 bg-black text-white rounded-lg hover:bg-gray-900 shadow-lg shadow-black/20 font-medium text-sm flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all">
+              {isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><Save size={16} /> Simpan Perubahan</>}
             </button>
           </ModalFooter>
         )}

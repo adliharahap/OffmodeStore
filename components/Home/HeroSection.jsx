@@ -116,7 +116,7 @@ const HeroSection = () => {
   // URL Video dipindah ke Parent agar bisa dinamis jika nanti ada banyak video
   const CAMPAIGN_VIDEO_URL = "/brand.mp4";
 
-  const mainImage = "https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=2073&auto=format&fit=crop"; 
+  const mainImage = "/picture1.jpeg"; 
   const secondaryImage = "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1000&auto=format&fit=crop";
 
   return (
@@ -230,7 +230,7 @@ const HeroSection = () => {
                 <path id="curve" d="M 50 50 m -37 0 a 37 37 0 1 1 74 0 a 37 37 0 1 1 -74 0" fill="transparent" />
                 <text className="text-[10px] font-bold uppercase tracking-widest fill-gray-900 dark:fill-white">
                   <textPath href="#curve">
-                    OffMode • Premium Quality • Since 2021 •
+                    OffMode • Premium Quality • Since 2025 •
                   </textPath>
                 </text>
               </svg>

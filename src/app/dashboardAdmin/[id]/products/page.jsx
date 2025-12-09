@@ -244,7 +244,7 @@ export default function ProductsPage() {
           />
         )}
         {modalState === 'edit' && selectedProduct && (
-          <ProductEditModal product={selectedProduct} onClose={closeModal} />
+          <ProductEditModal key={Date.now()} product={selectedProduct} onClose={closeModal} />
         )}
         {modalState === 'delete' && selectedProduct && (
           <ProductDeleteModal product={selectedProduct} onClose={closeModal} onConfirm={handleConfirmDelete} />

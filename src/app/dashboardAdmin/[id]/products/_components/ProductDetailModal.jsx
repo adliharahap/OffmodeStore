@@ -53,7 +53,7 @@ export default function ProductDetailModal({ product: initialProduct, onClose, o
     <ModalWrapper onClose={onClose}>
       
       {/* Header (Selalu tampil, tombol disable jika loading) */}
-      <div className="flex justify-between items-center p-6 border-b border-gray-200">
+      <div className="flex flex-col gap-4 sm:flex-row justify-between items-center p-6 border-b border-gray-200">
         <div>
           {/* Tampilkan Skeleton Text jika loading untuk nama panjang, tapi minimal nama dari tabel ada */}
           <h2 className="text-2xl font-bold text-gray-900">
@@ -248,7 +248,7 @@ const [searchTerm, setSearchTerm] = useState('');
         </div>
       </div>
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

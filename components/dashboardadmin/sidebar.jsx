@@ -169,7 +169,7 @@ function MobileSidebar({ isOpen, onClose, user, navLinks, onLogoutClick }) {
                 <ul>
                   {/* Menggunakan komponen NavItem yang sama, paksa expanded */}
                   {navLinks.map((link) => (
-                    <NavItem key={link.name} link={link} isExpanded={true} />
+                    <NavItem key={link.name} link={link} isExpanded={true} onNavigate={onClose} />
                   ))}
                 </ul>
               </nav>
@@ -282,7 +282,7 @@ function Logo({ isExpanded }) {
 /**
  * Sub-Komponen: NavItem
  */
-function NavItem({ link, isExpanded }) {
+function NavItem({ link, isExpanded, onNavigate }) {
   // TODO: Tambahkan logika 'active' di sini jika perlu
   // const isActive = window.location.pathname === link.href;
   const isActive = false; // Ganti dengan logika routing Anda
@@ -291,6 +291,9 @@ function NavItem({ link, isExpanded }) {
     <li className="mb-2">
       <Link
         href={link.href}
+        onClick={() => {
+          if (onNavigate) onNavigate(); // <--- tutup sidebar setelah klik
+        }}
         className={`flex items-center p-3 rounded-lg transition-colors duration-200 ${
           isActive 
             ? 'bg-gray-700 text-white' 
