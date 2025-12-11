@@ -345,21 +345,18 @@ const ProductsPage = () => {
           </div>
 
           {/* Main Content */}
-          <div className="grid gap-2 md:gap-4 lg:gap-8 pb-20 grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {/* Sidebar (Desktop) */}
-            <aside className="hidden lg:block lg:col-span-1">
+          <div className="flex flex-col lg:flex-row gap-8 pb-20">  
+            <aside className="hidden lg:block w-64 shrink-0">
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-950 shadow-lg border border-gray-200 dark:border-gray-700 sticky top-24">
                 <FilterSidebarContent />
               </div>
             </aside>
 
-            {/* Product Grid */}
-            <main className="lg:col-span-3">
+            <main className="flex-1"> 
               {isLoading ? (
-                /* LOADING STATE: Skeleton Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="h-96">
+                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="h-full">
                       <ProductCardSkeleton />
                     </div>
                   ))}
@@ -368,7 +365,10 @@ const ProductsPage = () => {
                 /* LOADED STATE */
                 <AnimatePresence>
                   {filteredProducts.length > 0 ? (
-                    <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+                    <motion.div 
+                      layout 
+                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6"
+                    >
                       {filteredProducts.map(product => (
                         <motion.div
                           key={product.id}

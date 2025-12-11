@@ -8,7 +8,7 @@ import Introduction from "../../components/Home/Introduction";
 
 export default function Home() {
   return (
-    <div>
+    <div className="overflow-hidden">
       <Header />
       <main>
         <HeroSection />

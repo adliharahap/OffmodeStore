@@ -46,7 +46,10 @@ export async function getUserOrders() {
           product: products (
             id,
             name,
-            product_images (image_url)
+            product_images (
+              image_url,
+              linked_color_name
+            )
           )
         )
       ),
@@ -69,13 +72,30 @@ export async function getUserOrders() {
     const reviewedProductIds = new Set(order.product_reviews.map(r => r.product_id));
 
     const formattedItems = order.order_items.map(item => {
-      const productId = item.variant?.product?.id;
+      const product = item.variant?.product;
+      const productId = product?.id;
+
+      // LOGIKA PENCARIAN GAMBAR SESUAI WARNA
+      const variantColor = item.variant?.color_name;
+      const allImages = product?.product_images || [];
+
+      // Cari gambar yang linked_color_name-nya sama dengan warna varian yang dibeli
+      const matchedImage = allImages.find(img => 
+        img.linked_color_name && variantColor && 
+        img.linked_color_name.toLowerCase() === variantColor.toLowerCase()
+      );
+      
+      // Fallback: Jika tidak ketemu (atau varian tidak punya warna spesifik), pakai gambar pertama
+      const finalImageUrl = matchedImage 
+        ? matchedImage.image_url 
+        : (allImages[0]?.image_url || 'https://placehold.co/200x200?text=No+Image');
+
       return {
         name: item.variant?.product?.name || "Produk Terhapus",
         price: item.price_at_purchase,
         quantity: item.quantity,
         variant: `${item.variant?.color_name || '-'}, ${item.variant?.size_name || '-'}`,
-        image_url: item.variant?.product?.product_images?.[0]?.image_url || 'https://placehold.co/200x200?text=No+Image',
+        image_url: finalImageUrl,
         productId: productId,
         // TAMBAHAN: Flag apakah item ini sudah direview
         isReviewed: productId ? reviewedProductIds.has(productId) : false
@@ -95,6 +115,7 @@ export async function getUserOrders() {
       items: formattedItems,
       firstItemName: formattedItems[0]?.name,
       firstItemImage: formattedItems[0]?.image_url,
+      firstItemProductId: formattedItems[0]?.productId,
       totalItems: formattedItems.length
     };
   });

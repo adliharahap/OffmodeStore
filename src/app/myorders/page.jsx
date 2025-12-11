@@ -22,6 +22,7 @@ import { completeOrderAction, getUserOrders } from '../../../utils/orderAction';
 import Footer from '../../../components/Footer';
 import ReviewModal from './_components/ReviewModal';
 import Header from '../../../components/Header';
+import Link from 'next/link';
 
 
 const formatRupiah = (number) => {
@@ -116,6 +117,8 @@ const OrderCard = ({ order, onRefresh, onReview }) => {
   const totalItems = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const totalItemString = totalItems > 1 ? `+${totalItems - 1} barang lainnya` : '1 barang';
 
+  const firstItemProductId = order.firstItemProductId;
+
   if (!firstItem) return null;
 
   const handleCompleteOrder = async () => {
@@ -164,16 +167,20 @@ const OrderCard = ({ order, onRefresh, onReview }) => {
 
       {/* Summary Content */}
       <div className="p-5 flex items-start gap-4">
-        <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 relative group">
-          <img
-            src={firstItem.image_url}
-            alt={firstItem.name}
-            className="w-full h-full object-cover"
-            onError={(e) => e.currentTarget.src = `https://placehold.co/600x400/93c5fd/000000?text=No+Img`}
-          />
-        </div>
+        <Link href={firstItemProductId ? `/detailproduct/${firstItemProductId}` : '#'} onClick={(e) => e.stopPropagation()}>
+          <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 relative group">
+            <img
+              src={firstItem.image_url}
+              alt={firstItem.name}
+              className="w-full h-full object-cover"
+              onError={(e) => e.currentTarget.src = `https://placehold.co/600x400/93c5fd/000000?text=No+Img`}
+            />
+          </div>
+        </Link>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 dark:text-white line-clamp-1">{firstItem.name}</p>
+          <p className="font-semibold text-gray-900 dark:text-white line-clamp-1 hover:text-purple-600 transition-colors">
+            {firstItem.name}
+          </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{totalItemString}</p>
           <div className="mt-2">
             <p className="text-xs text-gray-500 dark:text-gray-400">Total Tagihan</p>

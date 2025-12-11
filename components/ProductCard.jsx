@@ -22,7 +22,7 @@ export const ProductCard = ({ product }) => {
     : 0;
 
   return (
-    <div className="group relative bg-white dark:bg-slate-950 rounded-xl shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-800 transition-all duration-300 overflow-hidden flex flex-col h-full w-full max-w-[280px] mx-auto">
+    <div className="group relative bg-white dark:bg-slate-950 rounded-xl shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-800 transition-all duration-300 overflow-hidden flex flex-col h-full w-full mx-auto">
       
       {/* --- GAMBAR & BADGE --- */}
       <div className="relative w-full aspect-4/5 overflow-hidden bg-gray-100">

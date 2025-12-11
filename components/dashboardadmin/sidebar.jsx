@@ -74,9 +74,9 @@ export default function AdminNavigationShell({isMobileOpen, setIsMobileOpen, use
       href: `/dashboardAdmin/${userId}/customers` 
     },
     { 
-      name: "Outloook", 
+      name: "Lookbook", 
       icon: BookOpen, 
-      href: `/dashboardAdmin/${userId}/outlook` 
+      href: `/dashboardAdmin/${userId}/lookbook` 
     },
     // --- PERUBAHAN DI SINI: Ganti Pengaturan jadi Halaman Utama ---
     { 

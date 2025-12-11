@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 export const VideoModal = ({ isOpen, onClose, videoUrl }) => {
     const videoRef = useRef(null);
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -18,13 +18,6 @@ export const VideoModal = ({ isOpen, onClose, videoUrl }) => {
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen]);
-
-    // Reset mute state saat modal dibuka
-    useEffect(() => {
-        if (isOpen) {
-            setIsMuted(true);
-        }
     }, [isOpen]);
 
     // Autoplay logic: Trigger play saat modal ter-render (isOpen = true)

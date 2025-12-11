@@ -117,7 +117,7 @@ const HeroSection = () => {
   const CAMPAIGN_VIDEO_URL = "/brand.mp4";
 
   const mainImage = "/picture1.jpeg"; 
-  const secondaryImage = "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1000&auto=format&fit=crop";
+  const secondaryImage = "/picture2.jpeg";
 
   return (
     // ROOT: bg-stone-50 (Light) vs bg-[#0a0a0a] (Dark)

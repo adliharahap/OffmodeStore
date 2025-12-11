@@ -73,6 +73,8 @@ export default async function DetailProductPage({ params }) {
   const formattedProduct = {
     id: data.id,
     name: data.name,
+    badge: data.badge ?? null,
+    is_new_arrival: data.is_new_arrival ?? false,
     price: data.product_variants?.[0]?.price ?? 0,
     originalPrice: data.product_variants?.[0]?.original_price ?? 0,
     rating: data.rating ?? null,

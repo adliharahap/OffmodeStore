@@ -46,16 +46,16 @@ const FeaturedProducts = () => {
   }, []);
 
   return (
-        <section className="py-24 bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-t border-gray-200 dark:border-white/5 relative overflow-hidden transition-colors duration-500">
+    <section className="py-24 bg-stone-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-t border-gray-200 dark:border-white/5 relative overflow-hidden transition-colors duration-500">
       
-      {/* Dekorasi Background (Noise Texture) - Subtle di Light Mode */}
+      {/* Dekorasi Background */}
       <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none -z-10 mix-blend-multiply dark:mix-blend-normal" 
            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` }}>
       </div>
 
       <div className="container mx-auto px-6">
         
-        {/* HEADER SECTION (EDITORIAL STYLE) */}
+        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
@@ -85,17 +85,16 @@ const FeaturedProducts = () => {
           </motion.div>
         </div>
 
-        {/* LOADING STATE (SKELETON ADAPTIVE) */}
+        {/* LOADING STATE */}
         {isLoading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-[#111] rounded-xl h-[450px] animate-pulse border border-gray-200 dark:border-white/5" />
+              <div key={i} className="bg-white dark:bg-[#111] rounded-xl h-[300px] md:h-[450px] animate-pulse border border-gray-200 dark:border-white/5" />
             ))}
           </div>
         ) : (
-          /* DATA LOADED */
           <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch"
+            className="flex justify-start gap-3 md:gap-6"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -106,8 +105,9 @@ const FeaturedProducts = () => {
                 <motion.div
                   key={product.id}
                   variants={itemVariants}
+                  className="flex justify-center w-[calc(50%-6px)] md:w-auto"
                 >
-                  <Link href={`/detailproduct/${product.id}`} className="transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
+                  <Link href={`/detailproduct/${product.id}`} className="block w-full max-w-60 md:max-w-[300px] mx-auto h-full transition-transform duration-500 hover:-translate-y-2 cursor-pointer">
                       <ProductCard product={product} />
                   </Link>
                 </motion.div>

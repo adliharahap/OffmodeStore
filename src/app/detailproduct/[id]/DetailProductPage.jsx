@@ -505,7 +505,7 @@ const DetailProduct = ({ product }) => {
             {/* Title & Price */}
             <motion.div variants={fadeInUp}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-bold uppercase tracking-wide">New Arrival</span>
+                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-bold uppercase tracking-wide">{product.is_new_arrival ? "New Arrival" : product.badge}</span>
                 {product.rating && (
                   <div className="flex items-center gap-1 text-xs font-semibold text-yellow-600 dark:text-yellow-400">
                     <Star size={14} fill="currentColor" /> {product.rating}
